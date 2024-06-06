@@ -1,3 +1,34 @@
+# Excel files
+*.xls
+*.xlsx
+
+*.zip
+# CSV files
+*.csv
+
+# JSON files
+*.json
+
+# XML files
+*.xml
+
+# Data dumps
+*.sql
+*.dump
+
+# SQLite Databases
+*.db
+*.sqlite
+
+# Logs
+*.log
+
+# Temporary files often used in data processing
+*.tmp
+*.temp
+
+notebooks/.ipynb_checkpoints
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

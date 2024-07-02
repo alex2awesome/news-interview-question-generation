@@ -76,7 +76,7 @@ Evaluate the consistency between the following two questions based on four dimen
 
     Transcript Context: {transcript_context}
 
-    LLM Question: {llm_question}
+    LLM Question: {LLM_question}
 
     Human Question: {human_question}
 

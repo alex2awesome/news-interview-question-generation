@@ -1,6 +1,6 @@
 TAXONOMY = [
     "Kick-Off Questions - Initial Inquiry",
-    "Kick-Off Questions - Acknowledgement Statement",
+    "Acknowledgement Statement - Establish Empathy",
     "Follow-Up Questions - Elaboration",
     "Follow-Up Questions - Probing",
     "Follow-Up Questions - Re-asking",
@@ -22,7 +22,7 @@ Kick-Off Questions:
   - Initial Inquiry: Asking for basic information on a topic.
       Example: 'What advice would you give to Americans who haven’t chosen to get vaccinated?'
 Acknowledgement Statement:
-  - Establish empathy.
+  - Establish Empathy.
       Example: 'Well, this must have been pretty astonishing?'
 Follow-Up Questions:
   - Elaboration: Asking the interviewee to provide more details on a specific point.
@@ -81,9 +81,11 @@ Evaluate the consistency between the following two questions based on four dimen
     Human Question: {human_question}
 
     Please take things step by step by first explaining your thought process for each dimension. 
-    Then, return your label for each dimension in the following format: [Informational label, Motivational label, Contextual label, Stylistic label]
-    
+    Then, return your label for each dimension in the following format as your final answer: [Informational label, Motivational label, Contextual label, Stylistic label]
+
     Example 1: [Yes, Yes, No, Yes]
     Example 2: [No, No, No, No]
     Example 3: [Yes, No, Yes, No]
+
+    Make sure that only your final answer has brackets.
 '''

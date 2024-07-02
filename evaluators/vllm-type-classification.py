@@ -10,11 +10,12 @@ from vllm import LLM, SamplingParams
 import json
 
 HF_HOME = "/project/jonmay_231/spangher/huggingface_cache"
-config_data = json.load(open('/project/jonmay_231/spangher/Projects/news-interview-question-generation/evaluators/config.json'))
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'), 'r') as config_file:
+    config_data = json.load(config_file)
 os.environ['HF_TOKEN'] = config_data["HF_TOKEN"]
 os.environ['HF_HOME'] = HF_HOME
 
-def load_model_and_tokenizer(model_name):
+def load_vllm_model(model_name):
     torch.cuda.memory_summary(device=None, abbreviated=False)
     model = LLM(
         model_name,
@@ -23,49 +24,28 @@ def load_model_and_tokenizer(model_name):
         download_dir=HF_HOME,
         enforce_eager=True
     )
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    return model, tokenizer
+    return model
 
-def generate_response(model, messages):
+def vllm_infer(model_name, messages):
+    model = load_vllm_model(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
     output = model.generate(formatted_prompt, sampling_params)
     return output[0].outputs[0].text
 
-# Returns question type given relevant transcript context
-def classify_question(transcript_section):
-    prompt = CLASSIFY_USING_TAXONOMY_PROMPT.format(transcript_section=transcript_section)
-    full_prompt = [
-        {"role": "system", "content": "You are a world-class annotator for interview questions."},
-        {"role": "user", "content": prompt}
-    ]
-    generated_text = generate_response(model, full_prompt).strip()
-    print(generated_text)
-
+def classify_question(model_name, messages):
+    generated_text = vllm_infer(model_name, messages)
+    print(f"generated_text: {generated_text}")
+    
     question_type = extract_text_inside_brackets(generated_text)
-
+          
     if question_type in TAXONOMY:
         return question_type
     else:
         return "Unknown question type"
 
-def process_transcripts(database):  # Needs to be transferred to helper_functions.py
-    """
-    Parameters:
-        database (list): A list of interview transcript sections.
-
-    Returns:
-        list: A list of classified question types.
-    """
-    classified_questions = []
-    for transcript in database:
-        question_type = classify_question(transcript)
-        classified_questions.append(question_type)
-    return classified_questions
-
 if __name__ == "__main__":
-    model_name = "meta-llama/Meta-Llama-3-70B-Instruct"
-    model, tokenizer = load_model_and_tokenizer(model_name)
     transcript = """ 
 
     RACHEL MARTIN, HOST:
@@ -84,5 +64,12 @@ if __name__ == "__main__":
 
     MARTIN: You weren't there on that morning.
     """
-    q_type = classify_question(model, tokenizer, transcript)
+    model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
+    prompt = CLASSIFY_USING_TAXONOMY_PROMPT.format(transcript_section=transcript)
+    messages = [
+        {"role": "system", "content": "You are a world-class annotator for interview questions."},
+        {"role": "user", "content": prompt}
+    ]
+    
+    q_type = classify_question(model_name, messages)
     print(q_type)

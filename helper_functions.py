@@ -1,8 +1,44 @@
+# helper_functions.py
+
 import tiktoken
 import re
 from openai import OpenAI
+from transformers import AutoTokenizer
+from vllm import LLM, SamplingParams
+import json
 import os
+import torch
 
+#hugging face environment setup for VLLM functionality
+def setup_hf_env():
+    HF_HOME = "/project/jonmay_231/spangher/huggingface_cache"
+    config_data = json.load(open('/project/jonmay_231/spangher/Projects/news-interview-question-generation/evaluators/config.json'))
+    os.environ['HF_TOKEN'] = config_data["HF_TOKEN"]
+    os.environ['HF_HOME'] = HF_HOME
+    return HF_HOME
+
+#vllm framework model loader
+def load_vllm_model(model_name):
+    hf_home = setup_hf_env()
+    torch.cuda.memory_summary(device=None, abbreviated=False)
+    model = LLM(
+        model_name,
+        dtype=torch.float16,
+        tensor_parallel_size=torch.cuda.device_count(),
+        download_dir=hf_home,
+        enforce_eager=True
+    )
+    return model
+
+def vllm_infer(model_name, messages):
+    model = load_vllm_model(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
+    output = model.generate(formatted_prompt, sampling_params)
+    return output[0].outputs[0].text
+
+#setup openai API
 def get_openai_client(key_file_path='~/.openai-api-key.txt'):
     key_path = os.path.expanduser(key_file_path)
     client = OpenAI(api_key=open(key_path).read().strip())

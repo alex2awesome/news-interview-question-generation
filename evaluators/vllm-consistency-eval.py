@@ -1,40 +1,12 @@
+# vllm-consistency-eval.py
+
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from transformers import AutoTokenizer
-import torch
-import re
+from helper_functions import vllm_infer, extract_text_inside_brackets
 from prompts import DIMENSION_OF_SIMILARITY_PROMPT
-from helper_functions import extract_text_inside_brackets
 # from vllm-type-classification import classify_question 
 # ^include classify_question(model_name, messages) as a parameter later
-from vllm import LLM, SamplingParams
-import json
-
-HF_HOME = "/project/jonmay_231/spangher/huggingface_cache"
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'), 'r') as config_file:
-    config_data = json.load(config_file)
-os.environ['HF_TOKEN'] = config_data["HF_TOKEN"]
-os.environ['HF_HOME'] = HF_HOME
-
-def load_vllm_model(model_name):
-    torch.cuda.memory_summary(device=None, abbreviated=False)
-    model = LLM(
-        model_name,
-        dtype=torch.float16,
-        tensor_parallel_size=torch.cuda.device_count(),
-        download_dir=HF_HOME,
-        enforce_eager=True
-    )
-    return model
-
-def vllm_infer(model_name, messages):
-    model = load_vllm_model(model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    output = model.generate(formatted_prompt, sampling_params)
-    return output[0].outputs[0].text
 
 def consistency_compare(model_name, messages):
     generated_text = vllm_infer(model_name, messages)

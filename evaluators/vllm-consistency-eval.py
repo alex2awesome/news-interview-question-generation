@@ -8,8 +8,20 @@ from prompts import DIMENSION_OF_SIMILARITY_PROMPT
 # from vllm-type-classification import classify_question 
 # ^include classify_question(model_name, messages) as a parameter later
 
-def consistency_compare(model_name, messages):
-    generated_text = vllm_infer(model_name, messages)
+def consistency_eval_prompt_loader(transcript_context, llm_question, human_question):
+    prompt = DIMENSION_OF_SIMILARITY_PROMPT.format(
+        transcript_context=transcript_context,
+        LLM_question=llm_question,
+        human_question=human_question
+    )
+    messages = [
+        {"role": "system", "content": "You are a world-class annotator for question similarity."},
+        {"role": "user", "content": prompt}
+    ]
+    return messages
+
+def consistency_compare(messages, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    generated_text = vllm_infer(messages, model_name)
     print(f"generated_text: {generated_text}")
 
     similarity_scores_str = extract_text_inside_brackets(generated_text)
@@ -27,19 +39,9 @@ if __name__ == "__main__":
     llm_question = "What are the main causes of climate change?"
     human_question = "Can you explain why the climate is changing?"
     transcript_context = "We are discussing environmental issues, particularly focusing on climate change and its causes."
+    messages = consistency_eval_prompt_loader(transcript_context, llm_question, human_question)
     
-    model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
-    prompt = DIMENSION_OF_SIMILARITY_PROMPT.format(
-        transcript_context=transcript_context,
-        LLM_question=llm_question,
-        human_question=human_question
-    )
-    messages = [
-        {"role": "system", "content": "You are a world-class annotator for question similarity."},
-        {"role": "user", "content": prompt}
-    ]
-    
-    sim_score = consistency_compare(model_name, messages)
+    sim_score = consistency_compare(messages, "meta-llama/Meta-Llama-3-8B-Instruct")
     print(f'Total similarity score: {sim_score}')
 
     '''

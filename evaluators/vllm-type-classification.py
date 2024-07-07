@@ -6,8 +6,17 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import vllm_infer, extract_text_inside_brackets
 from prompts import TAXONOMY, CLASSIFY_USING_TAXONOMY_PROMPT
 
-def classify_question(model_name, messages):
-    generated_text = vllm_infer(model_name, messages)
+def type_classification_prompt_loader(transcript):
+    prompt = CLASSIFY_USING_TAXONOMY_PROMPT.format(transcript_section=transcript)
+    messages = [
+        {"role": "system", "content": "You are a world-class annotator for interview questions."},
+        {"role": "user", "content": prompt}
+    ]
+    return messages
+
+def classify_question(transcript, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    messages = type_classification_prompt_loader(transcript)
+    generated_text = vllm_infer(messages, model_name)
     print(f"generated_text: {generated_text}")
     
     question_type = extract_text_inside_brackets(generated_text)
@@ -36,12 +45,5 @@ if __name__ == "__main__":
 
     MARTIN: You weren't there on that morning.
     """
-    model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
-    prompt = CLASSIFY_USING_TAXONOMY_PROMPT.format(transcript_section=transcript)
-    messages = [
-        {"role": "system", "content": "You are a world-class annotator for interview questions."},
-        {"role": "user", "content": prompt}
-    ]
-    
-    q_type = classify_question(model_name, messages)
-    print(f"Outputed Label: {q_type}")
+    question_type = classify_question(transcript, "meta-llama/Meta-Llama-3-8B-Instruct")
+    print(f"Outputed Label: {question_type}")

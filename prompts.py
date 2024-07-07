@@ -89,3 +89,29 @@ Evaluate the consistency between the following two questions based on four dimen
 
     Make sure that only your final answer has brackets.
 '''
+
+CONTEXT_GENERATOR_PROMPT = '''
+Please read over this transcript. Write the following information in a brief paragraph:
+    Introduce the guest you are interviewing
+    Identify the purpose of the interview
+    Identify the guest’s involvement in the interview topic and his/her goals.
+
+Transcript: {transcript}   
+'''
+
+LLM_QUESTION_GENERATOR_PROMPT = '''
+Transcript Context: 
+
+Here's the dialogue so far between me, the interviewer, and the guest:
+
+{QA_Sequence}
+
+I would like you to guess the next question I will ask, however before that, let's first take things step by step. 
+Analyze the last piece of dialogue the guest has said. 
+Now think about what I as an interviewer could be thinking about in response to that. 
+What are the possible motivations for the kinds of questions I could be asking?
+
+Now, please guess the next question I will ask. Format your final guess for the question in brackets 
+like this: [Guessed Question]. 
+Next, please explain the motivation behind the question you provided in paragraph form, then format it with parentheses like this: (motivation explanation)
+'''

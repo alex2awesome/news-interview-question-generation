@@ -1,3 +1,4 @@
+# question type taxonomy
 TAXONOMY = [
     "Kick-Off Questions - Initial Inquiry",
     "Acknowledgement Statement - Establish Empathy",
@@ -16,6 +17,7 @@ TAXONOMY = [
     "Broadening Questions - Scope Expansion"
 ]
 
+# this prompt instructs LLM to classify a question given a question type taxonomy
 CLASSIFY_USING_TAXONOMY_PROMPT = '''
 Here is a comprehensive taxonomy of journalist question types/motivations:
 Kick-Off Questions:
@@ -65,6 +67,7 @@ Interview Transcript Section:
 Please first explain your thought process, then return your guess of the question type in brackets (both the category and the subcategory). For example: [Acknowledgement Statement - Establish empathy]
 '''
 
+# this prompt instructs LLM to evaluate two different questions based on dimensions of similarity
 DIMENSION_OF_SIMILARITY_PROMPT = '''
 Evaluate the consistency between the following two questions based on four dimensions:
     1. Informational: Do the questions target the same specific information or facts?
@@ -90,6 +93,7 @@ Evaluate the consistency between the following two questions based on four dimen
     Make sure that only your final answer has brackets.
 '''
 
+# this prompt is for generating additional context given the entire transcript
 CONTEXT_GENERATOR_PROMPT = '''
 Please read over this transcript. Write the following information in a brief paragraph:
     Introduce the guest you are interviewing
@@ -99,9 +103,8 @@ Please read over this transcript. Write the following information in a brief par
 Transcript: {transcript}   
 '''
 
+# this prompt instructs LLM to predict/guess the next question asked by the interviewer given a QA_sequence
 LLM_QUESTION_GENERATOR_PROMPT = '''
-Transcript Context: 
-
 Here's the dialogue so far between me, the interviewer, and the guest:
 
 {QA_Sequence}

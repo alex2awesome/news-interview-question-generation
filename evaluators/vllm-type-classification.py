@@ -5,6 +5,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import vllm_infer, extract_text_inside_brackets
 from prompts import TAXONOMY, CLASSIFY_USING_TAXONOMY_PROMPT
+import time
 
 def type_classification_prompt_loader(transcript):
     prompt = CLASSIFY_USING_TAXONOMY_PROMPT.format(transcript_section=transcript)
@@ -27,7 +28,8 @@ def classify_question(transcript, model_name="meta-llama/Meta-Llama-3-70B-Instru
         return "Unknown question type"
 
 if __name__ == "__main__":
-    transcript = """ 
+    start_time = time.time()
+    example_transcript = """ 
 
     RACHEL MARTIN, HOST:
 
@@ -45,5 +47,9 @@ if __name__ == "__main__":
 
     MARTIN: You weren't there on that morning.
     """
-    question_type = classify_question(transcript, "meta-llama/Meta-Llama-3-8B-Instruct")
+    question_type = classify_question(example_transcript, "meta-llama/Meta-Llama-3-8B-Instruct")
     print(f"Outputed Label: {question_type}")
+
+    end_time = time.time()  # End the timer
+    elapsed_time = end_time - start_time  # Calculate the elapsed time
+    print(f"Elapsed Time: {elapsed_time} seconds")

@@ -36,10 +36,10 @@ def consistency_compare(messages, model_name="meta-llama/Meta-Llama-3-70B-Instru
     return similarity_score(similarity_scores)
 
 if __name__ == "__main__":
-    llm_question = "What are the main causes of climate change?"
-    human_question = "Can you explain why the climate is changing?"
-    transcript_context = "We are discussing environmental issues, particularly focusing on climate change and its causes."
-    messages = consistency_eval_prompt_loader(transcript_context, llm_question, human_question)
+    ex_llm_question = "What are the main causes of climate change?"
+    ex_human_question = "Can you explain why the climate is changing?"
+    ex_transcript_context = "We are discussing environmental issues, particularly focusing on climate change and its causes."
+    messages = consistency_eval_prompt_loader(ex_transcript_context, ex_llm_question, ex_human_question)
     
     sim_score = consistency_compare(messages, "meta-llama/Meta-Llama-3-8B-Instruct")
     print(f'Total similarity score: {sim_score}')

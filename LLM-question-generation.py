@@ -15,14 +15,14 @@ def LLM_question_gen_prompt_loader(QA_seq):
     ]
     return messages
 
-# def LLM_question_generator(QA_seq, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
-#     messages = LLM_question_gen_prompt_loader(QA_seq)
-#     generated_text = vllm_infer(messages, model_name)
-#     print(f"generated_text: {generated_text}")
-#     LLM_question = extract_text_inside_brackets(generated_text)
-#     motivation = extract_text_inside_parentheses(generated_text)
+def LLM_question_generator(QA_seq, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    messages = LLM_question_gen_prompt_loader(QA_seq)
+    generated_text = vllm_infer(messages, model_name)
+    print(f"generated_text: {generated_text}")
+    LLM_question = extract_text_inside_brackets(generated_text)
+    motivation = extract_text_inside_parentheses(generated_text)
 
-#     return LLM_question, motivation
+    return LLM_question, motivation
 
 # reformats dataset transcript --> QA_sequence, feeds each QA_Seq into LLM to predict next question, saves prediction
 def LLM_question_process_dataset(file_path, output_dir="output_results"):
@@ -46,8 +46,8 @@ def LLM_question_process_dataset(file_path, output_dir="output_results"):
     output_file_path = os.path.join(output_dir, 'LLM_generated_results.csv')
     results_df.to_csv(output_file_path, index=False)
 
-def LLM_question_generator(QA_seq, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
-    return "placeholder question?", "test_blablabla"
+# def LLM_question_generator(QA_seq, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+#     return "placeholder question?", "test_blablabla"
 
 if __name__ == "__main__": 
     dataset_path = os.path.join("dataset", "combined_data.csv")

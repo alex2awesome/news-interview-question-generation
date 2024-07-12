@@ -41,6 +41,23 @@ def vllm_infer(messages, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     output = model.generate(formatted_prompt, sampling_params)
     return output[0].outputs[0].text
 
+# Function to infer multiple messages in batch
+def vllm_infer_batch(messages, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=8):
+    # Load model and tokenizer once
+    model = load_vllm_model(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
+    
+    # Divide messages into batches
+    batched_outputs = []
+    for i in range(0, len(messages), batch_size):
+        batch = messages[i:i + batch_size]
+        formatted_prompts = [tokenizer.apply_chat_template(msg, tokenize=False, add_generation_prompt=True) for msg in batch]
+        outputs = model.generate(formatted_prompts, sampling_params)
+        batched_outputs.extend([output.outputs[0].text for output in outputs])
+    
+    return batched_outputs
+
 # setup openai API
 def get_openai_client(key_file_path='~/.openai-api-key.txt'):
     key_path = os.path.expanduser(key_file_path)

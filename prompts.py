@@ -59,16 +59,18 @@ Broadening Questions:
   - Scope Expansion: Expanding the scope of the interview to include more general or additional topics.
       Example: 'How do you see these policies affecting global markets?'
 
-Given the following interview transcript section, please look and classify the type of the last question asked.
+Below is the following interview transcript section.
 
 Interview Transcript Section:
 {transcript_section}
 
-Please first explain your thought process, then return your guess of the question type in brackets (both the category and the subcategory). For example: [Acknowledgement Statement - Establish empathy]
+Here is the last question asked in the transcript section: {question}
+Please classify the type of this question, based on the taxonomy provided.
+First explain your thought process, then return your guess of the question type in brackets (both the category and the subcategory). For example: [Acknowledgement Statement - Establish empathy]
 '''
 
 # this prompt instructs LLM to evaluate two different questions based on dimensions of similarity
-DIMENSION_OF_SIMILARITY_PROMPT = '''
+WIP_DIMENSION_OF_SIMILARITY_PROMPT = '''
 Evaluate the consistency between the following two questions based on four dimensions:
     1. Informational: Do the questions target the same specific information or facts?
     2. Motivational: Do the questions have the same motivation or underlying purpose?
@@ -90,6 +92,29 @@ Evaluate the consistency between the following two questions based on four dimen
     Example 2: [No, No, No, No]
     Example 3: [Yes, No, Yes, No]
 
+    Make sure that only your final answer has brackets.
+'''
+# this prompt instructs LLM to evaluate two different questions based on dimensions of similarity
+DIMENSION_OF_SIMILARITY_PROMPT = '''
+Dimensions of Similarity:
+    1. Informational: Do the questions target the same specific information or facts?
+    2. Motivational: Do the questions have the same motivation or underlying purpose?
+    3. Contextual: Are both questions equally appropriate for the specific context provided?
+    4. Stylistic: Do the questions have similar styles in terms of tone, complexity, and structure?
+
+    Given the following information as well as the dimensions of similarity provided above, please evaluate whether the two questions below are similar or not. They are either similar or they aren't. The two questions are two possible continuation questions an interviewer can ask given the current interview transcript (conversation so far):
+
+    Transcript context: {transcript_context}
+
+    Question 1: {LLM_question}
+    Question 1 Type Classification: {LLM_question_type}
+
+    Question 2: {human_question}
+    Question 2 Type Classification: {Actual_question_type}
+
+    Please take things step by step by first explaining your thought process for each dimension. 
+    Finally, answer the following question: In the context of this interview, are the two questions provided more similar or different? 
+    Please format your final answer as either similar or different with brackets: [similar] or [different]
     Make sure that only your final answer has brackets.
 '''
 

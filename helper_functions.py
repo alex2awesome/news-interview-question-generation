@@ -33,6 +33,12 @@ def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     )
     return model
 
+def vllm_infer_batch(messages_batch, model):
+    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
+    outputs = model.generate(messages_batch, sampling_params)
+    return [output.outputs[0].text for output in outputs]
+
+# for single-use testing only
 def vllm_infer(messages, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     model = load_vllm_model(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -40,23 +46,6 @@ def vllm_infer(messages, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
     output = model.generate(formatted_prompt, sampling_params)
     return output[0].outputs[0].text
-
-# Function to infer multiple messages in batch
-def vllm_infer_batch(messages, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=8):
-    # Load model and tokenizer once
-    model = load_vllm_model(model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    
-    # Divide messages into batches
-    batched_outputs = []
-    for i in range(0, len(messages), batch_size):
-        batch = messages[i:i + batch_size]
-        formatted_prompts = [tokenizer.apply_chat_template(msg, tokenize=False, add_generation_prompt=True) for msg in batch]
-        outputs = model.generate(formatted_prompts, sampling_params)
-        batched_outputs.extend([output.outputs[0].text for output in outputs])
-    
-    return batched_outputs
 
 # setup openai API
 def get_openai_client(key_file_path='~/.openai-api-key.txt'):
@@ -81,18 +70,23 @@ def combine_all_qa_pair(row):
             combined.append(utterance)
     return " ".join(combined)
 
-def combine_two_qa_pairs(row):
+def combine_N_qa_pairs_and_next_question(row, N):
     combined = []
     current_speaker = None
     qa_pair_count = 0
+    next_question = None
     speakers = eval(row['speaker'])
     utterances = eval(row['utt'])
+    last_host_question = None
     
     for speaker, utterance in zip(speakers, utterances):
         if "host" in speaker.lower() and speaker != current_speaker:
+            last_host_question = f"{speaker}: {utterance}"
             qa_pair_count += 1
 
-        if qa_pair_count > 3:
+        if qa_pair_count > N:
+            if "host" in speaker.lower():
+                next_question = f"{speaker}: {utterance}"
             break
 
         if speaker != current_speaker:
@@ -101,14 +95,28 @@ def combine_two_qa_pairs(row):
         else:
             combined.append(utterance)
 
-    return " ".join(combined)
+    if next_question is None and last_host_question:
+        next_question = last_host_question
+        
+    return " ".join(combined), next_question
 
 def create_combined_dialogue_df(dataset_filepath, output_dir="output_results"):
     df = pd.read_csv(dataset_filepath, on_bad_lines='skip')
-    df['combined_dialogue'] = df.apply(lambda row: combine_two_qa_pairs(row), axis=1)
+    df['QA_Sequence'] = df.apply(lambda row: combine_all_qa_pair(row), axis=1)
     df = df.drop(columns=['utt', 'speaker'])
     
-    combined_file_path = os.path.join(output_dir, "combined_data_with_dialogue.csv")
+    combined_file_path = os.path.join(output_dir, "QA_Sequence.csv")
+    os.makedirs(output_dir, exist_ok=True)
+    df.to_csv(combined_file_path, index=False)
+    return df
+
+def create_QA_Sequence_df_N_qa_pairs(dataset_filepath, N, output_dir="output_results"):
+    df = pd.read_csv(dataset_filepath, on_bad_lines='skip')
+    results = df.apply(lambda row: combine_N_qa_pairs_and_next_question(row, N), axis=1)
+    df['QA_Sequence'], df['Actual_Question'] = zip(*results)
+    df = df.drop(columns=['utt', 'speaker'])
+    
+    combined_file_path = os.path.join(output_dir, "QA_Sequence_and_next_question.csv")
     os.makedirs(output_dir, exist_ok=True)
     df.to_csv(combined_file_path, index=False)
     return df
@@ -120,14 +128,14 @@ def extract_text_inside_brackets(text):
     match = re.search(r'\[(.*?)\]', text)
     if match:
         return match.group(1)
-    return 0
+    return "Error"
 
 # given "ABC{XYZ}EFG", return "XYZ"
 def extract_text_inside_parentheses(text):
     match = re.search(r'\((.*?)\)', text)
     if match:
         return match.group(1)
-    return 0
+    return "Error"
 
 # ------------- MISC section ------------- #
 
@@ -142,3 +150,8 @@ def price_calculator(tok_count, model='gpt-4o', batch=False):
     if batch:
         return f'total price: ${0.0000025 * tok_count}'
     return f'total price: ${0.000005 * tok_count}'
+
+if __name__ == "__main__": 
+    dataset_path = os.path.join("dataset", "test_dataset_1000.csv")
+    df = create_QA_Sequence_df_N_qa_pairs(dataset_path, 3)
+    print(df.head())

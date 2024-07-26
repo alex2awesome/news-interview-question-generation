@@ -10,6 +10,6 @@ conda activate myenv
 conda install pytorch torchvision torchaudio pytorch-cuda=12.2 -c pytorch -c nvidia -y
 conda install -c nvidia cudatoolkit-dev=12.2 -y
 conda install conda-forge::cudnn=8.1 -y
-conda install transformers pandas numpy tqdm -y
+conda install transformers pandas numpy tqdm scikit-learn -y
 
 pip install -r "$SCRIPT_DIR/requirements.txt"

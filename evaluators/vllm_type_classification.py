@@ -2,12 +2,12 @@
 
 import sys
 import os
+os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from transformers import AutoTokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets, create_QA_Sequence_df_N_qa_pairs
 from prompts import TAXONOMY, CLASSIFY_USING_TAXONOMY_PROMPT
-from LLM_question_generation import LLM_question_process_dataset
 import logging
 
 logging.basicConfig(
@@ -41,7 +41,7 @@ def classify_question_batch(QA_Sequences, questions, model, tokenizer):
     messages_batch = [type_classification_prompt_loader(QA_seq, question) for QA_seq, question in zip(QA_Sequences, questions)]
     formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
     outputs = vllm_infer_batch(formatted_prompts, model)
-    question_types = [extract_text_inside_brackets(output) if extract_text_inside_brackets(output) in TAXONOMY else "Error" for output in outputs]
+    question_types = [extract_text_inside_brackets(output) if extract_text_inside_brackets(output).lower() in TAXONOMY else "Error" for output in outputs]
     return question_types
 
 # this adds a column to LLM_questions_df called LLM_Question_Type and Actual_Question_Type
@@ -75,9 +75,9 @@ def classify_question_process_dataset(LLM_questions_df, output_dir="output_resul
 
 if __name__ == "__main__":
     df = pd.read_csv(os.path.join("output_results", "QA_Seq_LLM_generated.csv"))
-    df = classify_question_process_dataset(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct") # adds a column to LLM_questions_df called LLM_Question_Type and Actual_Question_Type
+    df = classify_question_process_dataset(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves type_classification labels in LLM_classified_results.csv
     print(df.head())
-    # expected result, contains the following columns: QA_Sequence, Actual_Question, LLM_Question, LLM_Question_Type, Actual_Question_Type
+    # expected result: dataframe now contains the following columns: QA_Sequence, Actual_Question, LLM_Question, LLM_Question_Type, Actual_Question_Type
 
 
 

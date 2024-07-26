@@ -2,6 +2,7 @@
 
 import sys
 import os
+os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from transformers import AutoTokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -67,7 +68,7 @@ def LLM_question_process_dataset(QA_Seq_df, output_dir="output_results", batch_s
     return QA_Seq_df
 
 if __name__ == "__main__": 
-    dataset_path = os.path.join("dataset", "test_dataset_1000.csv")
-    df = create_QA_Sequence_df_N_qa_pairs(dataset_path, 3) # create df with QA_Sequences and Actual Questions
-    df = LLM_question_process_dataset(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    dataset_path = os.path.join("dataset", "final_dataset.csv")
+    df = create_QA_Sequence_df_N_qa_pairs(dataset_path, 3) # saves QA_sequence in QA_Sequence_and_next_question.csv
+    df = LLM_question_process_dataset(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves LLM_questions in QA_Seq_LLM_generated.csv
     print(df.head())

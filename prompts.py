@@ -1,23 +1,24 @@
 # question type taxonomy
 TAXONOMY = [
-    "Kick-Off Questions - Initial Inquiry",
-    "Acknowledgement Statement - Establish Empathy",
-    "Follow-Up Questions - Elaboration",
-    "Follow-Up Questions - Probing",
-    "Follow-Up Questions - Re-asking",
-    "Topic Transition Questions - New Topic Introduction",
-    "Topic Transition Questions - Segway",
-    "Opinion and Speculation Questions - Opinion Seeking",
-    "Opinion and Speculation Questions - Speculative Inquiry",
-    "Verification Questions - Fact-Checking",
-    "Verification Questions - Confirmation",
-    "Verification Questions - Clarification",
-    "Challenge Questions - Contradiction",
-    "Challenge Questions - Critical Inquiry",
-    "Broadening Questions - Scope Expansion"
+    "kick-off questions - initial inquiry",
+    "acknowledgement statement - establish empathy",
+    "follow-up questions - elaboration",
+    "follow-up questions - probing",
+    "follow-up questions - re-asking",
+    "topic transition questions - new topic introduction",
+    "topic transition questions - segway",
+    "opinion and speculation questions - opinion seeking",
+    "opinion and speculation questions - speculative inquiry",
+    "verification questions - fact-checking",
+    "verification questions - confirmation",
+    "verification questions - clarification",
+    "challenge questions - contradiction",
+    "challenge questions - critical inquiry",
+    "broadening questions - scope expansion",
+    "other"
 ]
 
-# this prompt instructs LLM to classify a question given a question type taxonomy
+# this prompt instructs LLM to classify the last question in the current interview transcript, given a question type taxonomy
 CLASSIFY_USING_TAXONOMY_PROMPT = '''
 Here is a comprehensive taxonomy of journalist question types/motivations:
 Kick-Off Questions:
@@ -67,6 +68,43 @@ Interview Transcript Section:
 Here is the last question asked in the transcript section: {question}
 Please classify the type of this question, based on the taxonomy provided.
 First explain your thought process, then return your guess of the question type in brackets (both the category and the subcategory). For example: [Acknowledgement Statement - Establish empathy]
+'''
+
+# this prompt instructs LLM to classify the question given a question type taxonomy
+CLASSIFY_ALL_QUESTIONS_USING_TAXONOMY_PROMPT = '''
+Here is a comprehensive taxonomy of journalist question types/motivations:
+Kick-Off Questions:
+  - Initial Inquiry: Asking for basic information on a topic.
+Acknowledgement Statement:
+  - Establish Empathy: Acknowledges what the guest is saying, doesn't need to be a question.
+Follow-Up Questions:
+  - Elaboration: Asking the interviewee to provide more details on a specific point.
+  - Probing: Digging deeper into a topic to uncover more information or hidden insights.
+  - Re-asking: Rephrasing a question to get a direct answer if the initial response was unsatisfactory.
+Topic Transition Questions:
+  - New Topic Introduction: Moving on to a completely new topic.
+  - Segway: Smoothly transitioning from one related topic to another.
+Opinion and Speculation Questions:
+  - Opinion Seeking: Asking for the interviewee’s personal views or opinions.
+  - Speculative Inquiry: Asking the interviewee to speculate or predict future events.
+Verification Questions:
+  - Fact-Checking: Verifying the accuracy of a statement or claim made by the interviewee.
+  - Confirmation: Confirming an understanding or interpretation of the interviewee’s previous statements.
+  - Clarification: Seeking to clarify a vague or incomplete answer.
+Challenge Questions:
+  - Contradiction: Pointing out inconsistencies or contradictions in the interviewee’s statements.
+  - Critical Inquiry: Critically questioning the interviewee’s stance or actions.
+Broadening Questions:
+  - Scope Expansion: Expanding the scope of the interview to include more general or additional topics.
+
+Here is the following interview transcript:
+{transcript}
+
+Here is a question I want you to classify from the transcript: {question}
+Please classify the type of this question, based on the taxonomy provided above. 
+First explain your thought process, then return your guess of the question type in brackets (both the category and the subcategory from the taxonomy). Make sure your category and subcategory follows from the taxonomy exactly.
+    For example: [Acknowledgement Statement - Establish empathy]
+If you believe that the type of the question is not in the current taxonomy, please format your answer as: [Other]
 '''
 
 # this prompt instructs LLM to evaluate two different questions based on dimensions of similarity

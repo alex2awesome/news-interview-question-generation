@@ -7,6 +7,13 @@
 #SBATCH --cpus-per-gpu=10
 #SBATCH --mem=100G
 #SBATCH --partition=gpu
+#SBATCH --mail-type=BEGIN
+#SBATCH --mail-user=michael.lu@berkeley.edu
 
 source /project/jonmay_231/spangher/Projects/news-interview-question-generation/env_setup.sh
-python /project/jonmay_231/spangher/Projects/news-interview-question-generation/LLM-question-generation.py
+
+conda init bash
+source ~/.bashrc
+conda activate myenv
+
+python /project/jonmay_231/spangher/Projects/news-interview-question-generation/data_processing/classify_all_questions.py

@@ -2,13 +2,12 @@
 
 import sys
 import os
+os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from transformers import AutoTokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets, create_combined_dialogue_df
+from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets
 from prompts import DIMENSION_OF_SIMILARITY_PROMPT
-# from vllm-type-classification import classify_question 
-# ^include classify_question(model_name, messages) as a parameter later
 
 def consistency_eval_prompt_loader(transcript_context, llm_question, human_question, LLM_question_type, Actual_question_type):
     prompt = DIMENSION_OF_SIMILARITY_PROMPT.format(
@@ -76,10 +75,8 @@ def consistency_compare_process_dataset(df, output_dir="output_results", batch_s
 
 if __name__ == "__main__":
     df = pd.read_csv(os.path.join("output_results", "LLM_classified_results.csv"))
-    df = consistency_compare_process_dataset(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    df = consistency_compare_process_dataset(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
     print(df.head())
-
-
 
     # ex_llm_question = "What are the main causes of climate change?"
     # ex_human_question = "Can you explain why the climate is changing?"
@@ -88,9 +85,3 @@ if __name__ == "__main__":
     
     # sim_score = consistency_compare(messages, "meta-llama/Meta-Llama-3-8B-Instruct")
     # print(f'Total similarity score: {sim_score}')
-
-    # '''
-    # Future implementation: 
-    # 1. Incorporate function call to classify_question(model_name, messages) 
-    # and include it as an input to make the LLM evalution function more robust.
-    # '''

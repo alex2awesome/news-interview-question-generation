@@ -64,6 +64,7 @@ def consistency_compare_process_dataset(df, output_dir="output_results", batch_s
         Actual_question_types = batch['Actual_Question_Type'].tolist()
 
         classified_similarities = consistency_compare_batch(QA_Sequences, LLM_questions, Actual_questions, LLM_question_types, Actual_question_types, model, tokenizer)
+        classified_similarities = [1 if result == "similar" else 0 for result in classified_similarities]
         classified_similarity_results.extend(classified_similarities)
     
     df['Classify_Similarity'] = classified_similarity_results

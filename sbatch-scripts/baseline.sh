@@ -13,10 +13,9 @@
 cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 
 source env_setup.sh
+
 conda init bash
 source ~/.bashrc
 conda activate myenv
 
-python LLM-question-generation.py
-python -m evaluators.vllm_type_classification
-python -m evaluators.vllm_consistency_eval
+python -m variations.baseline

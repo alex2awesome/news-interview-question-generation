@@ -18,4 +18,4 @@ conda init bash
 source ~/.bashrc
 conda activate myenv
 
-python -m variations.baseline
+python -m variations.outline.outline_LLM_QGen

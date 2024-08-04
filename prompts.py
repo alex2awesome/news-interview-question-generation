@@ -169,64 +169,90 @@ Transcript: {transcript}
 
 # (QASeq only) baseline variation: motivation is asked afterwards so that it doesn't affect the question generated (!= CoT)
 BASELINE_LLM_QUESTION_PROMPT = '''
-Here's the dialogue so far between the interviewer, and the guest (source):
+Your task is to predict the next question that will follow in an interview.
+Make sure that you are recognizing the interviewee's last comment and acknowledging it when appropriate, rather than immediately moving on and asking a question. When you do decide acknowledgment is necessary, make sure your response is personal and empathetic (sound like you care about what the interviewee has to say). This can simply be acknowledging what they said.
 
+The format of your response should be in this sequence:
+1. First, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this: [Guessed Question]. 
+2. Then, explain the main motivation/intent behind the question that should be asked, then format your explanation with parentheses like this: (motivation explanation)
+
+Here is the interview so far:
 {QA_Sequence}
 
-Please guess the next question the interviewer will ask. Format your final guess for the question in brackets like this: [Guessed Question]. 
-Next, please explain the motivation behind the question you provided in paragraph form, then format it with parentheses like this: (motivation explanation)
+Remember to format your guess for the next question the interviewer asks in brackets [], then your motivation explanation in parentheses ().
 '''
 
 # (QASeq + CoT) Chain of Thought variation: motivation is asked before the question to influence the question generated
 CoT_LLM_QUESTION_PROMPT = '''
-Here's the dialogue so far between the interviewer, and the guest (source):
+Your task is to predict the next question that will follow in an interview.
+Make sure that you are recognizing the interviewee's last comment and acknowledging it when appropriate, rather than immediately moving on and asking a question. When you do decide acknowledgment is necessary, make sure your response is personal and empathetic (sound like you care about what the interviewee has to say). This can simply be acknowledging what they said.
 
-{QA_Sequence}
-
-Let's first take things step by step:
-  - Think about the last piece of dialogue the guest has said. 
-  Now think about what I as an interviewer could be thinking about in response to that. 
-  What are the possible motivations for the kinds of questions I could be asking?
-
-Now, please explain the main motivation behind kinds of questions that should be asked, then format it with parentheses like this: (motivation explanation)
-Next, please guess the next question I will ask. Format your final guess for the question in brackets 
-like this: [Guessed Question]. 
-
-'''
-
-# (QASeq + Outline)
-CoT_LLM_QUESTION_PROMPT = '''
-
-'''
-
-# (QASeq + CoT + Outline) variation: 
-
-CoT_OUTLINE_LLM_QUESTION_PROMPT = '''
-Your task is to predict the next question that will follow in an interview. I will give you a piece of the interview transcript as well as the motivation behind the interview.
-Make sure that you are recognizing the interviewee's last comment and acknowledging it when appropriate, rather than immediately moving on and asking a question. When you do decide acknowledgment is neceessary, make sure your response is personal and empathetic (sound like you care about what the interviewee has to say). This can simply be acknowledging what they said.
-Think about this in a step by step manner. For the following questions, write out your thoughts:
+Think about this step by step. For the following questions, write out your thoughts:
   - How did the previous response of the interview address the question?
   - Did they answer the question or do we need to ask a clarifying question?
   - What other components does this story need?/What more information does this source have?
   - Do we need ask a follow up?
 
-Next, I want you to tell me the reason/purpose for the predicted next question you will give me. Lastly, I want you to give me that predicted next question.
+The format of your response should be in this sequence:
+1. First, write out your thinking (in whatever format you want)
+2. Next, explain the main motivation/intent behind the question that should be asked, then format your explanation with parentheses like this: (motivation explanation)
+3. Lastly, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this: [Guessed Question]. 
 
-# ERRORRORORORORROROOORORORO CHANGE THE STUFF BELWO THIS LINE#
-Your response should look like this:
-Thinking (in whatever format you want)
-Reason/purpose (written under an identifier labeled “REASON/PURPOSE”)
-Acknowledgement to the interviewee’s previous responde (labeled “ACKNOWLEDGMENT”)
-Predicted next question (labeled “NEXT QUESTION”)
-Be mindful of the transitions so it sounds as personal and structured as possible.
-
-Here is the relevant information:
-You are about to interview {first_sentence_of_outline_statement}
-Here is an outline of your goals and top questions you want to ask for the interview:
-{full_paragraph_of_interview_goals}
-{insert_all_6_questions}
 Here is the interview so far:
-
 {QA_Sequence}
 
+Remember to format your motivation in parentheses (), then your guess for the next question asked in brackets [].
+'''
+
+# (QASeq + Outline) variation: additional context is provided along with the QA Sequence
+OUTLINE_LLM_QUESTION_PROMPT = '''
+Your task is to predict the next question that will follow in an interview. I will give you the current interview dialogue as well as the motivation behind the interview.
+Make sure that you are recognizing the interviewee's last comment and acknowledging it when appropriate, rather than immediately moving on and asking a question. When you do decide acknowledgment is necessary, make sure your response is personal and empathetic (sound like you care about what the interviewee has to say). This can simply be acknowledging what they said.
+
+The format of your response should be in this sequence:
+1. First, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this: [Guessed Question]. 
+2. Then, explain the main motivation/intent behind the question that should be asked, then format your explanation with parentheses like this: (motivation explanation)
+
+Here is the relevant information:
+{outline_statement}
+
+Here is an outline of your goals and top questions you want to ask for the interview:
+{interview_goals}
+
+{general_questions}
+
+Here is the interview so far:
+{QA_Sequence}
+
+Remember to format your guess for the next question asked in brackets [], then your motivation in parentheses ().
+'''
+
+# (QASeq + CoT + Outline) variation: additional context is provided along with the QA Sequence and chain-of-thought technique
+CoT_OUTLINE_LLM_QUESTION_PROMPT = '''
+Your task is to predict the next question that will follow in an interview. I will give you the current interview dialogue as well as the motivation behind the interview.
+Make sure that you are recognizing the interviewee's last comment and acknowledging it when appropriate, rather than immediately moving on and asking a question. When you do decide acknowledgment is necessary, make sure your response is personal and empathetic (sound like you care about what the interviewee has to say). This can simply be acknowledging what they said.
+
+Think about this step by step. For the following questions, write out your thoughts:
+  - How did the previous response of the interview address the question?
+  - Did they answer the question or do we need to ask a clarifying question?
+  - What other components does this story need?/What more information does this source have?
+  - Do we need ask a follow up?
+
+The format of your response should be in this sequence:
+1. First, write out your thinking (in whatever format you want)
+2. Next, explain the main motivation/intent behind the question that should be asked, then format your explanation with parentheses like this: (motivation explanation)
+3. Lastly, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this: [Guessed Question]. 
+
+Here is the relevant information:
+{outline_statement}
+
+Here is an outline of your goals and top questions you want to ask for the interview:
+{interview_goals}
+
+{general_questions}
+
+Here is the interview so far:
+{QA_Sequence}
+
+Remember to format your motivation in parentheses (), and your guess for the next question asked in brackets [].
 '''

@@ -74,7 +74,9 @@ def classify_question_process_dataset(LLM_questions_df, output_dir="output_resul
     return LLM_questions_df
 
 if __name__ == "__main__":
-    df = pd.read_csv(os.path.join("output_results", "QA_Seq_LLM_generated.csv"))
+    dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/baseline/QA_Seq_LLM_generated.csv"
+    df = pd.read_csv(dataset_path)
+
     df = classify_question_process_dataset(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves type_classification labels in LLM_classified_results.csv
     print(df.head())
     # expected result: dataframe now contains the following columns: QA_Sequence, Actual_Question, LLM_Question, LLM_Question_Type, Actual_Question_Type

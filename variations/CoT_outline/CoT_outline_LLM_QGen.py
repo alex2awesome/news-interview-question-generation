@@ -49,7 +49,7 @@ if __name__ == "__main__":
     df = pd.read_csv(dataset_path)
     df.rename(columns={"Input (first k qa_pairs)": "QA_Sequence", "Ground Truth (k+1 question)": "Actual_Question"}, inplace=True)
     
-    LLM_questions_df = OUTLINE_LLM_question_process_dataset(CoT_OUTLINE_LLM_QUESTION_PROMPT, df, output_dir="output_results/CoT_outline", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves LLM_questions in QA_Seq_LLM_generated.csv
+    LLM_questions_df = OUTLINE_LLM_question_process_dataset(CoT_OUTLINE_LLM_QUESTION_PROMPT, df, output_dir="output_results/CoT_outline", model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves LLM_questions in QA_Seq_LLM_generated.csv
     print(LLM_questions_df)
 
     '''

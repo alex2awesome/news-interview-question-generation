@@ -21,53 +21,42 @@ TAXONOMY = [
 # this prompt instructs LLM to classify the last question in the current interview transcript, given a question type taxonomy
 CLASSIFY_USING_TAXONOMY_PROMPT = '''
 Here is a comprehensive taxonomy of journalist question types/motivations:
+
 Kick-Off Questions:
   - Initial Inquiry: Asking for basic information on a topic.
-      Example: 'What advice would you give to Americans who haven’t chosen to get vaccinated?'
 Acknowledgement Statement:
   - Establish Empathy.
-      Example: 'Well, this must have been pretty astonishing?'
 Follow-Up Questions:
   - Elaboration: Asking the interviewee to provide more details on a specific point.
-      Example: 'Can you explain more about how the mandate is hurting the economy?'
   - Probing: Digging deeper into a topic to uncover more information or hidden insights.
-      Example: 'Why do you think the administration is not promoting therapeutics as much as vaccines?'
   - Re-asking: Rephrasing a question to get a direct answer if the initial response was unsatisfactory.
-      Example: 'But what specific advice do you have about the vaccines themselves?'
 Topic Transition Questions:
   - New Topic Introduction: Moving on to a completely new topic.
-      Example: 'Now, let’s talk about the upcoming election…'
   - Segway: Smoothly transitioning from one related topic to another.
-      Example: 'Speaking of the economy, how do you see the job market evolving next year?'
 Opinion and Speculation Questions:
   - Opinion Seeking: Asking for the interviewee’s personal views or opinions.
-      Example: 'Do you believe the current administration is handling the pandemic well?'
   - Speculative Inquiry: Asking the interviewee to speculate or predict future events.
-      Example: 'What do you think will happen if the mandates continue?'
 Verification Questions:
   - Fact-Checking: Verifying the accuracy of a statement or claim made by the interviewee.
-      Example: 'Can you provide evidence to support that claim?'
   - Confirmation: Confirming an understanding or interpretation of the interviewee’s previous statements.
-      Example: 'So, you’re saying the therapeutics should be prioritized over the vaccines?'
   - Clarification: Seeking to clarify a vague or incomplete answer.
-      Example: 'In other words, are you saying X?'
 Challenge Questions:
   - Contradiction: Pointing out inconsistencies or contradictions in the interviewee’s statements.
-      Example: 'You mentioned the mandate is harmful, but earlier you supported vaccination efforts. Can you explain this?'
   - Critical Inquiry: Critically questioning the interviewee’s stance or actions.
-      Example: 'Given the economic impact, do you think your administration’s policies were effective?'
 Broadening Questions:
   - Scope Expansion: Expanding the scope of the interview to include more general or additional topics.
-      Example: 'How do you see these policies affecting global markets?'
 
 Below is the following interview transcript section.
 
 Interview Transcript Section:
 {transcript_section}
 
-Here is the last question asked in the transcript section: {question}
-Please classify the type of this question, based on the taxonomy provided.
-First explain your thought process, then return your guess of the question type in brackets (both the category and the subcategory). For example: [Acknowledgement Statement - Establish empathy]
+Here is the last question asked in the transcript section: 
+{question}
+
+The format of your response should be in this sequence:
+1. First, explain your thought process. Consider all possible answers, then pick the one you think best categorizes the question based on the taxonomy provided.
+2. Then, return your guess of the question type in brackets (both the category and the subcategory). For example: [Acknowledgement Statement - Establish empathy]
 '''
 
 # this prompt instructs LLM to classify the question given a question type taxonomy
@@ -141,7 +130,7 @@ Dimensions of Similarity:
     3. Contextual: Are both questions equally appropriate for the specific context provided?
     4. Stylistic: Do the questions have similar styles in terms of tone, complexity, and structure?
 
-    Given the following information as well as the dimensions of similarity provided above, please evaluate whether the two questions below are similar or not. They are either similar or they aren't. The two questions are two possible continuation questions an interviewer can ask given the current interview transcript (conversation so far):
+    Given these dimensions of similarity as well as the following information below, please evaluate whether the two questions below are similar or not. They are either similar or they aren't. The two questions are two possible continuation questions an interviewer can ask given the current interview so far.
 
     Transcript context: {transcript_context}
 
@@ -151,8 +140,10 @@ Dimensions of Similarity:
     Question 2: {human_question}
     Question 2 Type Classification: {Actual_question_type}
 
-    Please take things step by step by first explaining your thought process for each dimension. 
-    Finally, answer the following question: In the context of this interview, are the two questions provided more similar or different? 
+    Please take things step by step. The format of your response should be in this sequence:
+    1. First, explain your thought process for each dimension. 
+    2. Then, answer the following question: In the context of this interview, are the two questions provided more similar or different? 
+    
     Please format your final answer as either similar or different with brackets: [similar] or [different]
     Make sure that only your final answer has brackets.
 '''

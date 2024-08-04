@@ -42,12 +42,12 @@ if __name__ == "__main__":
     df = pd.read_csv(dataset_path)
     df.rename(columns={"Input (first k qa_pairs)": "QA_Sequence", "Ground Truth (k+1 question)": "Actual_Question"}, inplace=True)
     
-    LLM_questions_df = OUTLINE_LLM_question_process_dataset(OUTLINE_LLM_QUESTION_PROMPT, df, output_dir="output_results/outline", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves LLM_questions in QA_Seq_LLM_generated.csv
+    LLM_questions_df = OUTLINE_LLM_question_process_dataset(OUTLINE_LLM_QUESTION_PROMPT, df, output_dir="output_results/outline", model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves LLM_questions in QA_Seq_LLM_generated.csv
     print(LLM_questions_df)
 
     '''
     1. from task dataset, use the downsampled test set --> this dataset has a varied amount of QA pairs
-    2. generate LLM questions given the first k QA pairs, outline, and chain-of-thought reasoning
+    2. generate LLM questions given the first k QA pairs and an outline
     '''
 
     # checked that 8B model works? y/n: y (validated by michael)

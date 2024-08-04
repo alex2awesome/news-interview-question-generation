@@ -16,7 +16,7 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-# (no outline) prompt loader
+# (not-outline) prompt loader
 def LLM_question_gen_prompt_loader(prompt, QA_seq):
     new_prompt = prompt.format(QA_Sequence=QA_seq)
     messages = [
@@ -25,7 +25,7 @@ def LLM_question_gen_prompt_loader(prompt, QA_seq):
     ]
     return messages
 
-# for batching prompts w/o an outline
+# (not-outline) for batching prompts 
 def LLM_question_generator_batch(prompt, QA_seqs, model, tokenizer):
     messages_batch = [LLM_question_gen_prompt_loader(prompt, QA_seq) for QA_seq in QA_seqs]
     formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
@@ -48,7 +48,7 @@ def OUTLINE_LLM_QGen_prompt_loader(prompt, QA_seq, outline_statement, interview_
     ]
     return messages
 
-# for batching prompts with an outline
+# (outline) for batching prompts
 def OUTLINE_LLM_question_generator_batch(prompt, QA_seqs, outline_statement, interview_goals, general_questions, model, tokenizer):
     messages_batch = [OUTLINE_LLM_QGen_prompt_loader(prompt, QA_seq, outline, goals, gen_questions) for QA_seq, outline, goals, gen_questions in zip(QA_seqs, outline_statement, interview_goals, general_questions)]
     formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
@@ -67,7 +67,7 @@ def LLM_question_generator(prompt, QA_seq, model_name="meta-llama/Meta-Llama-3-7
 
     return LLM_question, motivation
 
-# (for not outline prompts) batches QA_Seq data into LLM to predict next question, saves as a csv
+# (not-outline prompts) batches QA_Seq data into LLM to predict next question, saves as a csv
 def LLM_question_process_dataset(prompt, QA_Seq_df, output_dir="output_results", batch_size=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     LLM_question_results = []
     motivation_results = []
@@ -91,7 +91,7 @@ def LLM_question_process_dataset(prompt, QA_Seq_df, output_dir="output_results",
     QA_Seq_df.to_csv(output_file_path, index=False)
     return QA_Seq_df
 
-# (for outline prompts) batches QA_Seq data into LLM to predict next question, saves as a csv
+# (outline prompts) batches QA_Seq data into LLM to predict next question, saves as a csv
 def OUTLINE_LLM_question_process_dataset(prompt, QA_Seq_df, output_dir="output_results", batch_size=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     LLM_question_results = []
     motivation_results = []

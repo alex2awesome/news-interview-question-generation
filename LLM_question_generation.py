@@ -16,7 +16,7 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-# no outline prompt loader
+# (no outline) prompt loader
 def LLM_question_gen_prompt_loader(prompt, QA_seq):
     new_prompt = prompt.format(QA_Sequence=QA_seq)
     messages = [
@@ -34,7 +34,7 @@ def LLM_question_generator_batch(prompt, QA_seqs, model, tokenizer):
     motivations = [extract_text_inside_parentheses(output) for output in outputs]
     return LLM_questions, motivations
 
-# outline prompt loader
+# (outline) prompt loader
 def OUTLINE_LLM_QGen_prompt_loader(prompt, QA_seq, outline_statement, interview_goals, general_questions):
     new_prompt = prompt.format(
         QA_Sequence=QA_seq, 

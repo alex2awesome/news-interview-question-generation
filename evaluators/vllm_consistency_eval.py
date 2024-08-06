@@ -72,6 +72,7 @@ def consistency_compare_process_dataset(df, output_dir="output_results", batch_s
     output_file_path = os.path.join(output_dir, 'LLM_consistency_eval_results.csv')
     os.makedirs(output_dir, exist_ok=True)
     df.to_csv(output_file_path, index=False)
+    print(f"csv file saved to {output_file_path}")
     return df
 
 if __name__ == "__main__":

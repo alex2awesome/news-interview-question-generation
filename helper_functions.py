@@ -33,6 +33,11 @@ def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     )
     return model
 
+def initialize_tokenizer(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    return tokenizer
+
+# for batching
 def vllm_infer_batch(messages_batch, model):
     sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
     outputs = model.generate(messages_batch, sampling_params)
@@ -136,6 +141,21 @@ def extract_text_inside_parentheses(text):
     if match:
         return match.group(1)
     return "Error"
+
+def stitch_csv_files(output_dir="output_results", final_output_file="LLM_classified_results_final.csv"):
+    all_files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.csv')]
+    all_files.sort()  # Sort files by name to ensure they are concatenated in the correct order
+    
+    all_dfs = []
+    for file in all_files:
+        df = pd.read_csv(file)
+        all_dfs.append(df)
+    
+    final_df = pd.concat(all_dfs, ignore_index=True)
+    final_output_path = os.path.join(output_dir, final_output_file)
+    final_df.to_csv(final_output_path, index=False)
+    print(f"All CSV files stitched together into {final_output_path}")
+    return final_df
 
 # ------------- MISC section ------------- #
 

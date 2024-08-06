@@ -6,7 +6,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from transformers import AutoTokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets, create_QA_Sequence_df_N_qa_pairs
+from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets, stitch_csv_files
 from prompts import TAXONOMY, CLASSIFY_USING_TAXONOMY_PROMPT
 import logging
 
@@ -45,7 +45,7 @@ def classify_question_batch(QA_Sequences, questions, model, tokenizer):
     return question_types
 
 # this adds a column to LLM_questions_df called LLM_Question_Type and Actual_Question_Type
-def classify_question_process_dataset(LLM_questions_df, output_dir="output_results", batch_size=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+def classify_question_process_dataset(LLM_questions_df, output_dir="output_results", batch_size=50, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     LLM_question_types_results = []
     Actual_question_types_results = []
 
@@ -68,33 +68,45 @@ def classify_question_process_dataset(LLM_questions_df, output_dir="output_resul
     LLM_questions_df['LLM_Question_Type'] = LLM_question_types_results
     LLM_questions_df['Actual_Question_Type'] = Actual_question_types_results
 
-    output_file_path = os.path.join(output_dir, 'LLM_classified_results.csv')
     os.makedirs(output_dir, exist_ok=True)
+    output_file_path = os.path.join(output_dir, 'LLM_classified_results.csv')
     LLM_questions_df.to_csv(output_file_path, index=False)
+    print(f"csv file saved to {output_file_path}")
     return LLM_questions_df
 
+# more memory efficient version?
+def mem_efficient_classify_question_process_dataset(LLM_questions_df, output_dir="output_results", batch_size=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    os.makedirs(output_dir, exist_ok=True)
+
+    model = load_vllm_model(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    QA_Sequences = LLM_questions_df['QA_Sequence'].tolist()
+    LLM_questions = LLM_questions_df['LLM_Question'].tolist()
+    Actual_questions = LLM_questions_df['Actual_Question'].tolist()
+
+    for start_idx in range(0, len(LLM_questions_df), batch_size):
+        end_idx = start_idx + batch_size
+        LLM_question_types = classify_question_batch(QA_Sequences[start_idx:end_idx], LLM_questions[start_idx:end_idx], model, tokenizer)
+        Actual_question_types = classify_question_batch(QA_Sequences[start_idx:end_idx], Actual_questions[start_idx:end_idx], model, tokenizer)
+
+        temp_df = LLM_questions_df.iloc[start_idx:end_idx].copy()
+        temp_df['LLM_Question_Type'] = LLM_question_types
+        temp_df['Actual_Question_Type'] = Actual_question_types
+
+        output_file_path = os.path.join(output_dir, f'LLM_classified_results_{start_idx}_{end_idx}.csv')
+        temp_df.to_csv(output_file_path, index=False)
+        print(f"Batch {start_idx} to {end_idx} saved to {output_file_path}")
+
+    print("All batches processed and saved.")
+    LLM_classified_df = stitch_csv_files(output_dir, 'final_LLM_classified_results.csv')
+    return LLM_classified_df
+
 if __name__ == "__main__":
-    dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/baseline/QA_Seq_LLM_generated.csv"
+    dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/test/QA_Seq_LLM_generated.csv"
     df = pd.read_csv(dataset_path)
 
-    df = classify_question_process_dataset(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves type_classification labels in LLM_classified_results.csv
-    print(df.head())
+    new_df = mem_efficient_classify_question_process_dataset(df, output_dir="output_results/test/type_classification", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves type_classification labels in LLM_classified_results.csv
+    print(new_df)
+
     # expected result: dataframe now contains the following columns: QA_Sequence, Actual_Question, LLM_Question, LLM_Question_Type, Actual_Question_Type
-
-
-
-
-    # example_transcript = """ 
-    # RACHEL MARTIN, HOST:
-    # Howard Lutnick is the CEO of the financial firm Cantor Fitzgerald. His company occupied the 101st to 105th floors of One World Trade Center. On September 11, 2001, he lost his brother and 658 of his colleagues. Lutnick survived and vowed to keep the firm alive. Now, 15 years later, he is still the CEO. And he joins us on the line from New York. Thank you so much for taking the time.
-    # HOWARD LUTNICK: Hey. It's my pleasure, Rachel.
-    # MARTIN: I'm sure there are a lot of moments and conversations that stand out from that first 24-hour period. But could I ask you to share one or two that stick with you?
-    # LUTNICK: Sure. So the night of September 11, I didn't really know who was alive and who wasn't alive. So we had a conference call. It was about 10 o'clock at night. And my employees called in. And I said, look, we have two choices.
-    # We can shut the firm down and go to our friends' funerals. Remember, that would be 20 funerals a day every day for 35 straight days. And I've got to tell you, If'm not really interested in going to work. All I want to do is climb under the covers and hug my family.
-    # But if we are going to go to work, we're going to do it to take care of our friends' families. So what do you want to do? You guys want to shut it down? Or do you want to work harder than you've ever worked before in your life? And that was the moment where the company survived.
-    # MARTIN: You weren't there on that morning.
-    # """
-
-    # question_type = classify_question(example_transcript, "meta-llama/Meta-Llama-3-8B-Instruct")
-    # print(f"Outputed Label: {question_type}")
-    # example output: "Outputed Label: Verification Questions - Confirmation"

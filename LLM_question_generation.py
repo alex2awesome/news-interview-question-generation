@@ -89,6 +89,7 @@ def LLM_question_process_dataset(prompt, QA_Seq_df, output_dir="output_results",
     os.makedirs(output_dir, exist_ok=True)
     output_file_path = os.path.join(output_dir, 'QA_Seq_LLM_generated.csv')
     QA_Seq_df.to_csv(output_file_path, index=False)
+    print(f"csv file saved to {output_file_path}")
     return QA_Seq_df
 
 # (outline prompts) batches QA_Seq data into LLM to predict next question, saves as a csv
@@ -116,6 +117,7 @@ def OUTLINE_LLM_question_process_dataset(prompt, QA_Seq_df, output_dir="output_r
     os.makedirs(output_dir, exist_ok=True)
     output_file_path = os.path.join(output_dir, 'QA_Seq_LLM_generated.csv')
     QA_Seq_df.to_csv(output_file_path, index=False)
+    print(f"csv file saved to {output_file_path}")
     return QA_Seq_df
 
 if __name__ == "__main__": 

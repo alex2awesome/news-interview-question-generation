@@ -4,7 +4,6 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-# from game_sim.conduct_interview import generate_vllm_response
 from helper_functions import load_vllm_model, initialize_tokenizer
 from game_sim_prompts import extraction_prompt_loader
 
@@ -82,3 +81,6 @@ if __name__ == "__main__":
 
     df_with_info_items = process_info_items(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
     print(df_with_info_items)
+
+    # checked that it works with the 8B model? y/n: y 
+    # (validated by michael)

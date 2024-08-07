@@ -10,13 +10,15 @@ def source_prompt_loader(QA_Sequence, response_type):
     return prompt
 
 # prompt/instructions for interviewer
-def interviewer_prompt_loader(QA_Sequence, information_items):
+def interviewer_prompt_loader(QA_Sequence, goals):
     prompt = f'''
-    You are an interviewer. Your goal is to extract the following pieces of information from the source:
+    You are an interviewer. Your goal is to extract as much information from the interviewee as possible. 
+    
+    Here is what you need to know:
 
-    {information_items}
+    {goals}
 
-    Here is the conversation so far:
+    Here is your conversation so far:
 
     {QA_Sequence}
 

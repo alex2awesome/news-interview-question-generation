@@ -6,20 +6,7 @@ from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # from game_sim.conduct_interview import generate_vllm_response
 from helper_functions import load_vllm_model, initialize_tokenizer
-
-def generate_extraction_prompt(transcript):
-    prompt = f"""
-    You are an AI tasked with extracting key pieces of information from an interview transcript. Below is the transcript:
-
-    {transcript}
-
-    Please extract the key pieces of information provided by the interviewee, formatted as follows:
-    - Information item #1
-    - Information item #2
-    - Information item #3
-    …
-    """
-    return prompt
+from game_sim_prompts import extraction_prompt_loader
 
 # ---- single use ---- #
 def vllm_infer(messages, model, tokenizer):
@@ -39,7 +26,7 @@ def extract_information_items(transcripts, model, tokenizer):
     information_items = []
 
     for transcript in transcripts:
-        prompt = generate_extraction_prompt(transcript)
+        prompt = extraction_prompt_loader(transcript)
         response = generate_vllm_response(prompt, "You are an AI extracting key information items from interview transcripts", model, tokenizer)
         information_items.append(response)
 
@@ -65,7 +52,7 @@ def extract_information_items_batch(transcripts, model, tokenizer, batch_size=10
     
     for i in range(0, len(transcripts), batch_size):
         batch = transcripts[i:i+batch_size]
-        prompts = [generate_extraction_prompt(transcript) for transcript in batch]
+        prompts = [extraction_prompt_loader(transcript) for transcript in batch]
         batch_responses = generate_vllm_response_batch(prompts, roles[:len(batch)], model, tokenizer)
         information_items.extend(batch_responses)
     
@@ -75,7 +62,7 @@ def extract_information_items_batch(transcripts, model, tokenizer, batch_size=10
 def process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", output_dir="output_results/game_sim"):
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
-    
+
     df['information_items'] = extract_information_items(df['combined_dialogue'].tolist(), model, tokenizer)
     
     os.makedirs(output_dir, exist_ok=True)

@@ -44,6 +44,7 @@ def classify_question_batch(QA_Sequences, questions, model, tokenizer):
     question_types = [extract_text_inside_brackets(output) if extract_text_inside_brackets(output).lower() in TAXONOMY else "Error" for output in outputs]
     return question_types
 
+# implement functionality to start where u stop
 # this adds a column to LLM_questions_df called LLM_Question_Type and Actual_Question_Type
 def classify_question_process_dataset(LLM_questions_df, output_dir="output_results", batch_size=50, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     LLM_question_types_results = []

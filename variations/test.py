@@ -38,8 +38,11 @@ if __name__ == "__main__":
     # consistency_eval_df = consistency_compare_process_dataset(type_classified_df, output_dir="output_results/test", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
     # print(consistency_eval_df)
 
-    path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/test/transcripts_with_split_outlines_1000.csv"
+    path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/CoT/LLM_classified_results.csv"
     df = pd.read_csv(path)
     print(df.columns)
+    print(df)
+
+    
 
     

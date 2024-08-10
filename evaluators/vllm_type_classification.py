@@ -41,7 +41,7 @@ def classify_question_batch(QA_Sequences, questions, model, tokenizer):
     messages_batch = [type_classification_prompt_loader(QA_seq, question) for QA_seq, question in zip(QA_Sequences, questions)]
     formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
     outputs = vllm_infer_batch(formatted_prompts, model)
-    question_types = [extract_text_inside_brackets(output) if extract_text_inside_brackets(output).lower() in TAXONOMY else "Error" for output in outputs]
+    question_types = [extract_text_inside_brackets(output) if extract_text_inside_brackets(output).lower() in TAXONOMY else f"(MISC) {extract_text_inside_brackets(output)}" for output in outputs]
     return question_types
 
 # implement functionality to start where u stop
@@ -106,8 +106,27 @@ def mem_efficient_classify_question_process_dataset(LLM_questions_df, output_dir
 if __name__ == "__main__":
     dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/test/QA_Seq_LLM_generated.csv"
     df = pd.read_csv(dataset_path)
-
-    new_df = mem_efficient_classify_question_process_dataset(df, output_dir="output_results/test/type_classification", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves type_classification labels in LLM_classified_results.csv
+    new_df = classify_question_process_dataset(df, output_dir="output_results/test/type_classification", batch_size=100, model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves type_classification labels in LLM_classified_results.csv
     print(new_df)
+
+    # dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/test/type_classification/LLM_classified_results.csv"
+    # df = pd.read_csv(dataset_path)
+    filtered_df = df[(df["LLM_Question_Type"].str.contains("(MISC)", na=False)) | 
+                     (df["Actual_Question_Type"].str.contains("(MISC)", na=False))
+                    ]
+    LLM_Question_Type = filtered_df["LLM_Question_Type"].tolist()
+    Actual_Question_Type = filtered_df["Actual_Question_Type"].tolist()
+    count = 0
+    for guess, actual in zip(LLM_Question_Type, Actual_Question_Type):
+        if "(MISC)" in guess:
+            count += 1
+            print(guess)
+        if "(MISC)" in actual:
+            count += 1
+            print(actual)
+    print(f"proportion of the errors in a sample of 300 data points: {count/df.shape[0]}")
+ 
+    # new_df = classify_question_process_dataset(df, output_dir="output_results/test/type_classification", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves type_classification labels in LLM_classified_results.csv
+    # print(new_df)
 
     # expected result: dataframe now contains the following columns: QA_Sequence, Actual_Question, LLM_Question, LLM_Question_Type, Actual_Question_Type

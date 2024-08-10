@@ -1,50 +1,72 @@
-# question type taxonomy
-TAXONOMY = [
-    "kick-off questions - initial inquiry",
+# old taxonomy: coarse-grained and fine-grained question type labels
+FINE_GRAINED_TAXONOMY = [
+    "kick-off question - initial inquiry",
     "acknowledgement statement - establish empathy",
-    "follow-up questions - elaboration",
-    "follow-up questions - probing",
-    "follow-up questions - re-asking",
-    "topic transition questions - new topic introduction",
-    "topic transition questions - segway",
-    "opinion and speculation questions - opinion seeking",
-    "opinion and speculation questions - speculative inquiry",
-    "verification questions - fact-checking",
-    "verification questions - confirmation",
-    "verification questions - clarification",
-    "challenge questions - contradiction",
-    "challenge questions - critical inquiry",
-    "broadening questions - scope expansion",
+    "follow-up question - elaboration",
+    "follow-up question - probing",
+    "follow-up question - re-asking",
+    "topic transition question - new topic introduction",
+    "topic transition question - segway",
+    "opinion and speculation question - opinion seeking",
+    "opinion and speculation question - speculative inquiry",
+    "verification question - fact-checking",
+    "verification question - confirmation",
+    "verification question - clarification",
+    "challenge question - contradiction",
+    "challenge question - critical inquiry",
+    "broadening question - scope expansion",
     "other"
+]
+
+# new taxonomy: single level of classification while still capturing the essence of each cat/subcat
+TAXONOMY = [
+    "initial inquiry question",
+    "establishing empathy question",
+    "elaboration question",
+    "probing question",
+    "rephrasing question",
+    "topic transition question",
+    "opinion seeking question",
+    "speculative inquiry question",
+    "fact-checking question",
+    "confirmation question",
+    "clarification question",
+    "contradiction challenge question",
+    "critical inquiry question",
+    "scope expansion question"
 ]
 
 # this prompt instructs LLM to classify the last question in the current interview transcript, given a question type taxonomy
 CLASSIFY_USING_TAXONOMY_PROMPT = '''
-Here is a comprehensive taxonomy of journalist question types/motivations:
-
-Kick-Off Questions:
-  - Initial Inquiry: Asking for basic information on a topic.
-Acknowledgement Statement:
-  - Establish Empathy.
-Follow-Up Questions:
-  - Elaboration: Asking the interviewee to provide more details on a specific point.
-  - Probing: Digging deeper into a topic to uncover more information or hidden insights.
-  - Re-asking: Rephrasing a question to get a direct answer if the initial response was unsatisfactory.
-Topic Transition Questions:
-  - New Topic Introduction: Moving on to a completely new topic.
-  - Segway: Smoothly transitioning from one related topic to another.
-Opinion and Speculation Questions:
-  - Opinion Seeking: Asking for the interviewee’s personal views or opinions.
-  - Speculative Inquiry: Asking the interviewee to speculate or predict future events.
-Verification Questions:
-  - Fact-Checking: Verifying the accuracy of a statement or claim made by the interviewee.
-  - Confirmation: Confirming an understanding or interpretation of the interviewee’s previous statements.
-  - Clarification: Seeking to clarify a vague or incomplete answer.
-Challenge Questions:
-  - Contradiction: Pointing out inconsistencies or contradictions in the interviewee’s statements.
-  - Critical Inquiry: Critically questioning the interviewee’s stance or actions.
-Broadening Questions:
-  - Scope Expansion: Expanding the scope of the interview to include more general or additional topics.
+Here is a comprehensive taxonomy of journalist question type labels and their corresponding motivations:
+  -	Initial Inquiry Question: 
+      - motivation: Asking for basic information on a topic.
+	-	Establishing Empathy Question: 
+      - motivation: Making an acknowledgment statement to build rapport.
+	-	Elaboration Question: 
+      - motivation: Asking for more details on a specific point.
+	-	Probing Question: 
+      - motivation: Digging deeper to uncover more information or hidden insights.
+	-	Rephrasing Question: 
+      - motivation: Re-asking or rephrasing a question to obtain a clearer or more direct answer
+	-	Topic Transition Question: 
+      - motivation: Moving on to a new topic or smoothly transitioning between related topics.
+	-	Opinion Seeking Question: 
+      - motivation: Asking for personal views or opinions.
+	-	Speculative Inquiry Question: 
+      - motivation: Requesting predictions or speculation about future events.
+	-	Fact-Checking Question: 
+      - motivation: Verifying the accuracy of a statement or claim.
+	-	Confirmation Question: 
+      - motivation: Confirming an understanding or interpretation of previous statements.
+	-	Clarification Question: 
+      - motivation: Seeking to clarify a vague or incomplete answer.
+	-	Contradiction Challenge Question: 
+      - motivation: Pointing out inconsistencies or contradictions.
+	-	Critical Inquiry Question: 
+      - motivation: Critically questioning the interviewee’s stance or actions.
+	-	Scope Expansion Question: 
+      - motivation: Broadening the discussion to include additional or more general topics.
 
 Below is the following interview transcript section.
 
@@ -55,35 +77,40 @@ Here is the last question asked in the transcript section:
 {question}
 
 The format of your response should be in this sequence:
-1. First, explain your thought process. Consider all possible answers, then pick the one you think best categorizes the question based on the taxonomy provided.
-2. Then, return your guess of the question type in brackets (both the category and the subcategory). For example: [Acknowledgement Statement - Establish empathy]
+  1. First, repeat the question, then explain your thought process. Pick the single label you think best categorizes the question based on the taxonomy provided above.
+  2. Then, return your guess of the question type in brackets (both the category and the subcategory).
+    Here are some examples of correct label formatting: 
+    ex 1. This type of question is: [Initial Inquiry Question]
+    ex 2. This type of question is: [Establishing Empathy Question]
+    ex 3. This type of question is: [Rephrasing Question]
+Don't include the motivation inside the brackets, and don't include multiple labels. Make sure only a single guess for the question type is inside the brackets.
 '''
 
 # this prompt instructs LLM to classify the question given a question type taxonomy
 CLASSIFY_ALL_QUESTIONS_USING_TAXONOMY_PROMPT = '''
 Here is a comprehensive taxonomy of journalist question types/motivations:
-Kick-Off Questions:
+Kick-Off Question:
   - Initial Inquiry: Asking for basic information on a topic.
 Acknowledgement Statement:
   - Establish Empathy: Acknowledges what the guest is saying, doesn't need to be a question.
-Follow-Up Questions:
+Follow-Up Question:
   - Elaboration: Asking the interviewee to provide more details on a specific point.
   - Probing: Digging deeper into a topic to uncover more information or hidden insights.
   - Re-asking: Rephrasing a question to get a direct answer if the initial response was unsatisfactory.
-Topic Transition Questions:
+Topic Transition Question:
   - New Topic Introduction: Moving on to a completely new topic.
   - Segway: Smoothly transitioning from one related topic to another.
-Opinion and Speculation Questions:
+Opinion and Speculation Question:
   - Opinion Seeking: Asking for the interviewee’s personal views or opinions.
   - Speculative Inquiry: Asking the interviewee to speculate or predict future events.
-Verification Questions:
+Verification Question:
   - Fact-Checking: Verifying the accuracy of a statement or claim made by the interviewee.
   - Confirmation: Confirming an understanding or interpretation of the interviewee’s previous statements.
   - Clarification: Seeking to clarify a vague or incomplete answer.
-Challenge Questions:
+Challenge Question:
   - Contradiction: Pointing out inconsistencies or contradictions in the interviewee’s statements.
   - Critical Inquiry: Critically questioning the interviewee’s stance or actions.
-Broadening Questions:
+Broadening Question:
   - Scope Expansion: Expanding the scope of the interview to include more general or additional topics.
 
 Here is the following interview transcript:
@@ -130,7 +157,7 @@ Dimensions of Similarity:
     3. Contextual: Are both questions equally appropriate for the specific context provided?
     4. Stylistic: Do the questions have similar styles in terms of tone, complexity, and structure?
 
-    Given these dimensions of similarity as well as the following information below, please evaluate whether the two questions below are similar or not. They are either similar or they aren't. The two questions are two possible continuation questions an interviewer can ask given the current interview so far.
+    Given these dimensions of similarity as well as the following information below, please evaluate whether the two questions below are overall similar or not. They are either similar or they aren't. 
 
     Transcript context: {transcript_context}
 
@@ -140,12 +167,15 @@ Dimensions of Similarity:
     Question 2: {human_question}
     Question 2 Type Classification: {Actual_question_type}
 
+    These two questions are two possible continuation questions an interviewer can ask given the current interview so far. In essence, your sole task is to determine whether the intent of these two possible questions are more similar or not different overall.
+
     Please take things step by step. The format of your response should be in this sequence:
-    1. First, explain your thought process for each dimension. 
+    1. First, repeat the two questions, then explain your thought process comparing these questions across each dimension of similarity. 
     2. Then, answer the following question: In the context of this interview, are the two questions provided more similar or different? 
-    
-    Please format your final answer as either similar or different with brackets: [similar] or [different]
-    Make sure that only your final answer has brackets.
+    Please format your final answer as either "similar" or "different" with brackets. 
+    If you think the similarity between the questions are high, please say "similar" instead.
+    If you think the similarity between the questions are low, please say "different" instead.
+    Your final answer can only be either of the following two: [similar] or [different], not both. 
 '''
 
 # this prompt is for generating additional context given the entire transcript

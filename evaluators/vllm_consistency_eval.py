@@ -18,7 +18,7 @@ def consistency_eval_prompt_loader(transcript_context, llm_question, human_quest
         Actual_question_type=Actual_question_type
     )
     messages = [
-        {"role": "system", "content": "You are a world-class annotator for question similarity."},
+        {"role": "system", "content": "You are an expert at gauging similarity between any two questions."},
         {"role": "user", "content": prompt}
     ]
     return messages
@@ -44,8 +44,14 @@ def consistency_compare_batch(transcript_contexts, llm_questions, human_question
     messages_batch = [consistency_eval_prompt_loader(context, llm_question, human_question, llm_q_type, human_q_type) for context, llm_question, human_question, llm_q_type, human_q_type in zip(transcript_contexts, llm_questions, human_questions, LLM_question_types, Actual_question_types)]
     formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
     outputs = vllm_infer_batch(formatted_prompts, model)
-    similarity_score = [extract_text_inside_brackets(output) for output in outputs]
-    return similarity_score
+    similarity_scores = [extract_text_inside_brackets(output) for output in outputs]
+    similarity_scores = [
+                            1 if result.lower() in ["similar", "high"]
+                            else 0 if result.lower() in ["different", "not similar", "low"]
+                            else f"Error: {result}"
+                            for result in similarity_scores
+                        ]
+    return similarity_scores
 
 # adds similarity column to the df
 def consistency_compare_process_dataset(df, output_dir="output_results", batch_size=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):  
@@ -64,10 +70,9 @@ def consistency_compare_process_dataset(df, output_dir="output_results", batch_s
         Actual_question_types = batch['Actual_Question_Type'].tolist()
 
         classified_similarities = consistency_compare_batch(QA_Sequences, LLM_questions, Actual_questions, LLM_question_types, Actual_question_types, model, tokenizer)
-        classified_similarities = [1 if result == "similar" else 0 for result in classified_similarities]
         classified_similarity_results.extend(classified_similarities)
     
-    df['Classify_Similarity'] = classified_similarity_results
+    df['Classified_Similarity'] = classified_similarity_results
 
     output_file_path = os.path.join(output_dir, 'LLM_consistency_eval_results.csv')
     os.makedirs(output_dir, exist_ok=True)
@@ -76,14 +81,15 @@ def consistency_compare_process_dataset(df, output_dir="output_results", batch_s
     return df
 
 if __name__ == "__main__":
-    df = pd.read_csv(os.path.join("output_results", "LLM_classified_results.csv"))
-    df = consistency_compare_process_dataset(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
-    print(df.head())
+    dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/test/type_classification/LLM_classified_results.csv"
+    df = pd.read_csv(dataset_path)
+    new_df = consistency_compare_process_dataset(df, output_dir="output_results/test/consistency_eval", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
+    print(new_df)
 
-    # ex_llm_question = "What are the main causes of climate change?"
-    # ex_human_question = "Can you explain why the climate is changing?"
-    # ex_transcript_context = "We are discussing environmental issues, particularly focusing on climate change and its causes."
-    # messages = consistency_eval_prompt_loader(ex_transcript_context, ex_llm_question, ex_human_question)
-    
-    # sim_score = consistency_compare(messages, "meta-llama/Meta-Llama-3-8B-Instruct")
-    # print(f'Total similarity score: {sim_score}')
+    filtered_df = df[(df["Classified_Similarity"].str.contains("Error", na=False))]
+    Classified_Similarity = filtered_df["Classified_Similarity"].tolist()
+    count = 0
+    for label in Classified_Similarity:
+        count += 1
+        print(label)
+    print(f"proportion of the errors in a sample of 1000 data points: {count/df.shape[0]}")

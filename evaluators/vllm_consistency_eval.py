@@ -5,6 +5,7 @@ import os
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from transformers import AutoTokenizer
+import gc
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets
 from prompts import DIMENSION_OF_SIMILARITY_PROMPT
@@ -54,7 +55,7 @@ def consistency_compare_batch(transcript_contexts, llm_questions, human_question
     return similarity_scores
 
 # adds similarity column to the df
-def consistency_compare_process_dataset(df, output_dir="output_results", batch_size=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):  
+def consistency_compare_process_dataset(df, output_dir="output_results", batch_size=50, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):  
     classified_similarity_results = []
 
     model = load_vllm_model(model_name)
@@ -63,14 +64,16 @@ def consistency_compare_process_dataset(df, output_dir="output_results", batch_s
     for start_idx in range(0, len(df), batch_size):
         batch = df.iloc[start_idx:start_idx + batch_size]
 
-        QA_Sequences = batch['QA_Sequence'].tolist()
-        LLM_questions = batch['LLM_Question'].tolist()
-        Actual_questions = batch['Actual_Question'].tolist()
-        LLM_question_types = batch['LLM_Question_Type'].tolist()
-        Actual_question_types = batch['Actual_Question_Type'].tolist()
+        QA_Sequences = batch['QA_Sequence']
+        LLM_questions = batch['LLM_Question']
+        Actual_questions = batch['Actual_Question']
+        LLM_question_types = batch['LLM_Question_Type']
+        Actual_question_types = batch['Actual_Question_Type']
 
         classified_similarities = consistency_compare_batch(QA_Sequences, LLM_questions, Actual_questions, LLM_question_types, Actual_question_types, model, tokenizer)
         classified_similarity_results.extend(classified_similarities)
+
+        gc.collect()
     
     df['Classified_Similarity'] = classified_similarity_results
 
@@ -83,13 +86,15 @@ def consistency_compare_process_dataset(df, output_dir="output_results", batch_s
 if __name__ == "__main__":
     dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/test/type_classification/LLM_classified_results.csv"
     df = pd.read_csv(dataset_path)
+    df = df.head(150)
+    print(df)
     new_df = consistency_compare_process_dataset(df, output_dir="output_results/test/consistency_eval", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
     print(new_df)
 
-    filtered_df = df[(df["Classified_Similarity"].str.contains("Error", na=False))]
-    Classified_Similarity = filtered_df["Classified_Similarity"].tolist()
-    count = 0
-    for label in Classified_Similarity:
-        count += 1
-        print(label)
-    print(f"proportion of the errors in a sample of 1000 data points: {count/df.shape[0]}")
+    # filtered_df = df[(df["Classified_Similarity"].str.contains("Error", na=False))]
+    # Classified_Similarity = filtered_df["Classified_Similarity"].tolist()
+    # count = 0
+    # for label in Classified_Similarity:
+    #     count += 1
+    #     print(label)
+    # print(f"proportion of the errors in a sample of 1000 data points: {count/df.shape[0]}")

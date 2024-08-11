@@ -1,0 +1,65 @@
+Script directory: /project/jonmay_231/spangher/Projects/news-interview-question-generation
+Conda environment 'myenv' already exists. Skipping creation.
+no change     /home1/ml_236/anaconda3/condabin/conda
+no change     /home1/ml_236/anaconda3/bin/conda
+no change     /home1/ml_236/anaconda3/bin/conda-env
+no change     /home1/ml_236/anaconda3/bin/activate
+no change     /home1/ml_236/anaconda3/bin/deactivate
+no change     /home1/ml_236/anaconda3/etc/profile.d/conda.sh
+no change     /home1/ml_236/anaconda3/etc/fish/conf.d/conda.fish
+no change     /home1/ml_236/anaconda3/shell/condabin/Conda.psm1
+no change     /home1/ml_236/anaconda3/shell/condabin/conda-hook.ps1
+no change     /home1/ml_236/anaconda3/lib/python3.12/site-packages/xontrib/conda.xsh
+no change     /home1/ml_236/anaconda3/etc/profile.d/conda.csh
+no change     /home1/ml_236/.bashrc
+No action taken.
+WARNING 08-11 16:04:12 config.py:1354] Casting torch.bfloat16 to torch.float16.
+INFO 08-11 16:04:12 llm_engine.py:169] Initializing an LLM engine (v0.5.1) with config: model='meta-llama/Meta-Llama-3-70B-Instruct', speculative_config=None, tokenizer='meta-llama/Meta-Llama-3-70B-Instruct', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, rope_scaling=None, rope_theta=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.float16, max_seq_len=8192, download_dir='/project/jonmay_231/spangher/huggingface_cache', load_format=LoadFormat.AUTO, tensor_parallel_size=1, pipeline_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=True, kv_cache_dtype=auto, quantization_param_path=None, device_config=cuda, decoding_config=DecodingConfig(guided_decoding_backend='outlines'), observability_config=ObservabilityConfig(otlp_traces_endpoint=None), seed=0, served_model_name=meta-llama/Meta-Llama-3-70B-Instruct, use_v2_block_manager=False, enable_prefix_caching=False)
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank0]:     return _run_code(code, main_globals, None,
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/runpy.py", line 86, in _run_code
+[rank0]:     exec(code, run_globals)
+[rank0]:   File "/project/jonmay_231/spangher/Projects/news-interview-question-generation/variations/outline/outline_consistency_eval.py", line 45, in <module>
+[rank0]:     consistency_eval_df = consistency_compare_process_dataset(type_classified_df, output_dir="output_results/outline", model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
+[rank0]:   File "/project/jonmay_231/spangher/Projects/news-interview-question-generation/evaluators/vllm_consistency_eval.py", line 61, in consistency_compare_process_dataset
+[rank0]:     model = load_vllm_model(model_name)
+[rank0]:   File "/project/jonmay_231/spangher/Projects/news-interview-question-generation/helper_functions.py", line 27, in load_vllm_model
+[rank0]:     model = LLM(
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/entrypoints/llm.py", line 149, in __init__
+[rank0]:     self.llm_engine = LLMEngine.from_engine_args(
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/engine/llm_engine.py", line 414, in from_engine_args
+[rank0]:     engine = cls(
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/engine/llm_engine.py", line 243, in __init__
+[rank0]:     self.model_executor = executor_class(
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/executor/executor_base.py", line 42, in __init__
+[rank0]:     self._init_executor()
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/executor/gpu_executor.py", line 24, in _init_executor
+[rank0]:     self.driver_worker.load_model()
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/worker/worker.py", line 133, in load_model
+[rank0]:     self.model_runner.load_model()
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/worker/model_runner.py", line 243, in load_model
+[rank0]:     self.model = get_model(
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/model_loader/__init__.py", line 21, in get_model
+[rank0]:     return loader.load_model(model_config=model_config,
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/model_loader/loader.py", line 267, in load_model
+[rank0]:     model = _initialize_model(model_config, self.load_config,
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/model_loader/loader.py", line 104, in _initialize_model
+[rank0]:     return model_class(config=model_config.hf_config,
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/models/llama.py", line 368, in __init__
+[rank0]:     self.model = LlamaModel(config,
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/models/llama.py", line 270, in __init__
+[rank0]:     [nn.Identity() for _ in range(self.start_layer)] + [
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/models/llama.py", line 271, in <listcomp>
+[rank0]:     LlamaDecoderLayer(config=config,
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/models/llama.py", line 191, in __init__
+[rank0]:     self.self_attn = LlamaAttention(
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/models/llama.py", line 133, in __init__
+[rank0]:     self.o_proj = RowParallelLinear(
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/layers/linear.py", line 705, in __init__
+[rank0]:     self.quant_method.create_weights(
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/vllm/model_executor/layers/linear.py", line 117, in create_weights
+[rank0]:     weight = Parameter(torch.empty(sum(output_partition_sizes),
+[rank0]:   File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/site-packages/torch/utils/_device.py", line 78, in __torch_function__
+[rank0]:     return func(*args, **kwargs)
+[rank0]: torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 128.00 MiB. GPU 

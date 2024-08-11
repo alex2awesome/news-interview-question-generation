@@ -14,8 +14,4 @@ cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 
 source env_setup.sh
 
-conda init bash
-source ~/.bashrc
-conda activate myenv
-
 python -m variations.CoT.CoT_type_classification

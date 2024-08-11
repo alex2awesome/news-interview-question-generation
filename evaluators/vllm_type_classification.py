@@ -5,6 +5,8 @@ import os
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from transformers import AutoTokenizer
+import gc
+import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets, stitch_csv_files
 from prompts import TAXONOMY, CLASSIFY_USING_TAXONOMY_PROMPT
@@ -44,7 +46,6 @@ def classify_question_batch(QA_Sequences, questions, model, tokenizer):
     question_types = [extract_text_inside_brackets(output) if extract_text_inside_brackets(output).lower() in TAXONOMY else f"(MISC) {extract_text_inside_brackets(output)}" for output in outputs]
     return question_types
 
-# implement functionality to start where u stop
 # this adds a column to LLM_questions_df called LLM_Question_Type and Actual_Question_Type
 def classify_question_process_dataset(LLM_questions_df, output_dir="output_results", batch_size=50, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     LLM_question_types_results = []
@@ -56,15 +57,17 @@ def classify_question_process_dataset(LLM_questions_df, output_dir="output_resul
     for start_idx in range(0, len(LLM_questions_df), batch_size):
         batch = LLM_questions_df.iloc[start_idx:start_idx + batch_size]
         
-        QA_Sequences = batch['QA_Sequence'].tolist()
-        LLM_questions = batch['LLM_Question'].tolist()
-        Actual_questions = batch['Actual_Question'].tolist()
+        QA_Sequences = batch['QA_Sequence']
+        LLM_questions = batch['LLM_Question']
+        Actual_questions = batch['Actual_Question']
 
         LLM_question_types = classify_question_batch(QA_Sequences, LLM_questions, model, tokenizer)
         Actual_question_types = classify_question_batch(QA_Sequences, Actual_questions, model, tokenizer)
 
         LLM_question_types_results.extend(LLM_question_types)
         Actual_question_types_results.extend(Actual_question_types)
+
+        gc.collect()
 
     LLM_questions_df['LLM_Question_Type'] = LLM_question_types_results
     LLM_questions_df['Actual_Question_Type'] = Actual_question_types_results
@@ -75,29 +78,39 @@ def classify_question_process_dataset(LLM_questions_df, output_dir="output_resul
     print(f"csv file saved to {output_file_path}")
     return LLM_questions_df
 
-# more memory efficient version?
-def mem_efficient_classify_question_process_dataset(LLM_questions_df, output_dir="output_results", batch_size=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
-    os.makedirs(output_dir, exist_ok=True)
-
+# implementation 2: save by batch + functionality to start where u stop
+def efficient_classify_question_process_dataset(LLM_questions_df, output_dir="output_results", batch_size=50, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    existing_files = [f for f in os.listdir(output_dir) if re.match(r'LLM_classified_results_\d+_\d+\.csv', f)]
+    if existing_files:
+        last_file = sorted(existing_files, key=lambda x: int(re.search(r'_(\d+)\.csv', x).group(1)))[-1]
+        last_end_idx = int(re.search(r'_(\d+)\.csv', last_file).group(1))
+        current_idx = last_end_idx
+        print(f"Resuming from index {current_idx}")
+    else:
+        current_idx = 0
+    
     model = load_vllm_model(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    QA_Sequences = LLM_questions_df['QA_Sequence'].tolist()
-    LLM_questions = LLM_questions_df['LLM_Question'].tolist()
-    Actual_questions = LLM_questions_df['Actual_Question'].tolist()
+    for start_idx in range(current_idx, len(LLM_questions_df), batch_size):
+        batch = LLM_questions_df.iloc[start_idx:start_idx + batch_size]
+        
+        QA_Sequences = batch['QA_Sequence']
+        LLM_questions = batch['LLM_Question']
+        Actual_questions = batch['Actual_Question']
 
-    for start_idx in range(0, len(LLM_questions_df), batch_size):
-        end_idx = start_idx + batch_size
-        LLM_question_types = classify_question_batch(QA_Sequences[start_idx:end_idx], LLM_questions[start_idx:end_idx], model, tokenizer)
-        Actual_question_types = classify_question_batch(QA_Sequences[start_idx:end_idx], Actual_questions[start_idx:end_idx], model, tokenizer)
+        LLM_question_types = classify_question_batch(QA_Sequences, LLM_questions, model, tokenizer)
+        Actual_question_types = classify_question_batch(QA_Sequences, Actual_questions, model, tokenizer)
 
-        temp_df = LLM_questions_df.iloc[start_idx:end_idx].copy()
+        temp_df = batch.copy()
         temp_df['LLM_Question_Type'] = LLM_question_types
         temp_df['Actual_Question_Type'] = Actual_question_types
 
-        output_file_path = os.path.join(output_dir, f'LLM_classified_results_{start_idx}_{end_idx}.csv')
+        output_file_path = os.path.join(output_dir, f'LLM_classified_results_{start_idx}_{start_idx + batch_size}.csv')
         temp_df.to_csv(output_file_path, index=False)
-        print(f"Batch {start_idx} to {end_idx} saved to {output_file_path}")
+        print(f"Batch {start_idx} to {start_idx + batch_size} saved to {output_file_path}")
+
+        gc.collect()
 
     print("All batches processed and saved.")
     LLM_classified_df = stitch_csv_files(output_dir, 'final_LLM_classified_results.csv')

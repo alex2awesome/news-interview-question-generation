@@ -12,6 +12,9 @@
 # XML files
 *.xml
 
+# all slurm-XXX.out files
+slurm-*.out
+
 # Data dumps
 *.sql
 *.dump

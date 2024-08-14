@@ -5,15 +5,13 @@
 #SBATCH --gres=gpu:a100:2
 #SBATCH --constraint=a100-80gb
 #SBATCH --cpus-per-gpu=10
-#SBATCH --mem=100G
+#SBATCH --mem=200G
 #SBATCH --partition=gpu
-#SBATCH --mail-type=BEGIN
+#SBATCH --mail-type=ALL
 #SBATCH --mail-user=michael.lu@berkeley.edu
 
-source /project/jonmay_231/spangher/Projects/news-interview-question-generation/env_setup.sh
+cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 
-conda init bash
-source ~/.bashrc
-conda activate myenv
+source env_setup.sh
 
-python /project/jonmay_231/spangher/Projects/news-interview-question-generation/data_processing/classify_all_questions.py
+python -m data_processing.classify_all_questions

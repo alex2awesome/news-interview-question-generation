@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:a100:2
 #SBATCH --constraint=a100-80gb
 #SBATCH --cpus-per-gpu=10
-#SBATCH --mem=100G
+#SBATCH --mem=200G
 #SBATCH --partition=gpu
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-user=michael.lu@berkeley.edu

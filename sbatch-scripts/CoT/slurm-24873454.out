@@ -1,0 +1,17 @@
+==========================================
+SLURM_JOB_ID = 24873454
+SLURM_JOB_NODELIST = b10-13
+TMPDIR = /tmp/SLURM_24873454
+==========================================
+Script directory: /project/jonmay_231/spangher/Projects/news-interview-question-generation
+Conda environment 'myenv' already exists. Skipping creation. Activating myenv.
+Traceback (most recent call last):
+  File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home1/ml_236/anaconda3/envs/myenv/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/project/jonmay_231/spangher/Projects/news-interview-question-generation/variations/CoT/CoT_type_classification.py", line 69, in <module>
+    type_classified_df = efficient_classify_question_process_dataset(LLM_questions_df, output_dir="output_results/CoT/type_classification", batch_size=30, model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves type_classification labels in LLM_classified_results.csv
+  File "/project/jonmay_231/spangher/Projects/news-interview-question-generation/evaluators/vllm_type_classification.py", line 83, in efficient_classify_question_process_dataset
+    existing_files = [f for f in os.listdir(output_dir) if re.match(r'LLM_classified_results_\d+_\d+\.csv', f)]
+FileNotFoundError: [Errno 2] No such file or directory: 'output_results/CoT/type_classification'

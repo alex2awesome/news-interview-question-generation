@@ -7,8 +7,8 @@
 #SBATCH --cpus-per-gpu=10
 #SBATCH --mem=100G
 #SBATCH --partition=gpu
-#SBATCH --mail-type=BEGIN
-#SBATCH --mail-user=michael.lu@berkeley.edu
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=sriyakalyan@berkeley.edu
 
 cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 

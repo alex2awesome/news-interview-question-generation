@@ -4,7 +4,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
 echo "Script directory: $SCRIPT_DIR"
 
 if conda env list | grep -q 'myenv'; then
-    echo "Conda environment 'myenv' already exists. Skipping creation."
+    echo "Conda environment 'myenv' already exists. Skipping creation. Activating myenv."
     eval "$(conda shell.bash hook)"
     conda activate myenv
 else

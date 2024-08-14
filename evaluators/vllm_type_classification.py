@@ -80,6 +80,7 @@ def classify_question_process_dataset(LLM_questions_df, output_dir="output_resul
 
 # implementation 2: save by batch + functionality to start where u stop
 def efficient_classify_question_process_dataset(LLM_questions_df, output_dir="output_results", batch_size=50, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    os.makedirs(output_dir, exist_ok=True)
     existing_files = [f for f in os.listdir(output_dir) if re.match(r'LLM_classified_results_\d+_\d+\.csv', f)]
     if existing_files:
         last_file = sorted(existing_files, key=lambda x: int(re.search(r'_(\d+)\.csv', x).group(1)))[-1]

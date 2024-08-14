@@ -2,6 +2,8 @@
 
 import sys
 import os
+import re
+import gc
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from transformers import AutoTokenizer
@@ -40,18 +42,16 @@ def extract_interviewer_questions(utt, speaker):
     for i in range(len(utt)):
         if 'host' in speaker[i].lower():
             if current_answer:
+                questions.append(" ".join(current_question))
                 answers.append(" ".join(current_answer))
                 current_answer = []
-            current_question.append(utt[i])
-        elif 'host' not in speaker[i].lower():
-            if current_question:
-                questions.append(" ".join(current_question))
                 current_question = []
+            current_question.append(utt[i])
+        else:
             current_answer.append(utt[i])
 
-    if current_question:
+    if current_question and current_answer:
         questions.append(" ".join(current_question))
-    if current_answer:
         answers.append(" ".join(current_answer))
 
     min_length = min(len(questions), len(answers))
@@ -60,7 +60,20 @@ def extract_interviewer_questions(utt, speaker):
 
     return questions, answers
 
-def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/output_interviews", num_interviews=30, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/all_questions_classified", num_interviews=150, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    os.makedirs(output_dir, exist_ok=True)
+    existing_files = [f for f in os.listdir(output_dir) if re.match(r'interview_NPR-(\d+)\.csv', f)]    
+    if existing_files:
+        processed_interview_ids = sorted([int(re.search(r'interview_NPR-(\d+)\.csv', f).group(1)) for f in existing_files])
+        last_processed_id = processed_interview_ids[-1]
+        total_len = len(processed_interview_ids)
+        print(f"Total number of interviews already processed out of the original {num_interviews}: {total_len} \nLast processed id: {last_processed_id}. \nResuming starting from the next interview.")
+        num_interviews -= total_len
+    else:
+        processed_interview_ids = []
+        last_processed_id = None
+        print("no existing interviews found, starting from beginning")
+
     unique_interviews = df['id'].unique()[:num_interviews]
     df = df[df['id'].isin(unique_interviews)]
 
@@ -68,32 +81,46 @@ def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     for interview_id in unique_interviews:
-        interview_df = df[df['id'] == interview_id]
-        interview_df = interview_df.reset_index(drop=True)
+        if last_processed_id is not None and interview_id <= last_processed_id:
+            continue
+        try:
+            interview_df = df[df['id'] == interview_id]
+            interview_df = interview_df.reset_index(drop=True)
 
-        interview_url = interview_df['url'].iloc[0]
-        utt = eval(interview_df['utt'].iloc[0])
-        speaker = eval(interview_df['speaker'].iloc[0])
-        combined_dialogue = interview_df['combined_dialogue'].iloc[0]
+            interview_url = interview_df['url'].iloc[0]
+            utt = eval(interview_df['utt'].iloc[0])
+            speaker = eval(interview_df['speaker'].iloc[0])
+            combined_dialogue = interview_df['combined_dialogue'].iloc[0]
 
-        questions, answers = extract_interviewer_questions(utt, speaker)
-        question_types = classify_question_batch(combined_dialogue, questions, model, tokenizer)
-        
-        interview_data = {
-            'Interview id': [interview_id] + [''] * (len(questions) - 1),
-            'interview url': [interview_url] + [''] * (len(questions) - 1),
-            'Question (Interviewer)': questions,
-            'Answer (Guest)': answers,
-            'Question type': question_types
-        }
-        interview_df_final = pd.DataFrame(interview_data)
+            questions, answers = extract_interviewer_questions(utt, speaker)
+            question_types = classify_question_batch(combined_dialogue, questions, model, tokenizer)
+            
+            interview_data = {
+                'Interview id': [interview_id] + [''] * (len(questions) - 1),
+                'interview url': [interview_url] + [''] * (len(questions) - 1),
+                'combined dialogue': [combined_dialogue] + [''] * (len(questions) - 1),
+                'Question (Interviewer)': questions,
+                'Answer (Guest)': answers,
+                'Question type': question_types
+            }
+            interview_df_final = pd.DataFrame(interview_data)
 
-        output_file_path = os.path.join(output_dir, f'interview_{interview_id}.csv')
-        os.makedirs(output_dir, exist_ok=True)
-        interview_df_final.to_csv(output_file_path, index=False)
+            output_file_path = os.path.join(output_dir, f'interview_{interview_id}.csv')
+            os.makedirs(output_dir, exist_ok=True)
+            interview_df_final.to_csv(output_file_path, index=False)
 
-        print(f"Processed and saved interview {interview_id} to {output_file_path}")
+            print(f"Processed and saved interview {interview_id} to {output_file_path}")
+
+            gc.collect()
+
+        except Exception as e:
+            print(f"Error processing interview {interview_id}: {e}")
+            break
+
+    print("All interviews processed and saved.")
 
 if __name__ == "__main__":
     df = pd.read_csv("/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/final_dataset.csv")
-    classify_each_question(df, num_interviews=30, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    print(df)
+    classify_each_question(df, num_interviews=150, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    print('done running!')

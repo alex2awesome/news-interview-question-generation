@@ -23,6 +23,7 @@ def setup_hf_env():
 # vllm framework model loader
 def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     hf_home = setup_hf_env()
+    torch.cuda.empty_cache()
     torch.cuda.memory_summary(device=None, abbreviated=False)
     model = LLM(
         model_name,

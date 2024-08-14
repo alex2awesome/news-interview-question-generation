@@ -42,7 +42,7 @@ if __name__ == "__main__":
     dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/outline/LLM_classified_results.csv"
     type_classified_df = pd.read_csv(dataset_path)
     
-    consistency_eval_df = consistency_compare_process_dataset(type_classified_df, output_dir="output_results/outline", model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
+    consistency_eval_df = consistency_compare_process_dataset(type_classified_df, output_dir="output_results/outline", batch_size=30, model_name="meta-llama/Meta-Llama-3-70B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
     print(consistency_eval_df)
 
     # checked that 8B model works? y/n: y (validated by michael)

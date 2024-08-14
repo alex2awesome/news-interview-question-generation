@@ -4,7 +4,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from evaluators.vllm_type_classification import classify_question_process_dataset
+from evaluators.vllm_type_classification import classify_question_process_dataset, efficient_classify_question_process_dataset
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(lineno)d - %(message)s",

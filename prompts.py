@@ -41,31 +41,31 @@ CLASSIFY_USING_TAXONOMY_PROMPT = '''
 Here is a comprehensive taxonomy of journalist question type labels and their corresponding motivations:
   -	Initial Inquiry Question: 
       - motivation: Asking for basic information on a topic.
-	-	Establishing Empathy Question: 
+  -   Establishing Empathy Question: 
       - motivation: Making an acknowledgment statement to build rapport.
-	-	Elaboration Question: 
+  -	Elaboration Question: 
       - motivation: Asking for more details on a specific point.
-	-	Probing Question: 
+  -	Probing Question: 
       - motivation: Digging deeper to uncover more information or hidden insights.
-	-	Rephrasing Question: 
+  -	Rephrasing Question: 
       - motivation: Re-asking or rephrasing a question to obtain a clearer or more direct answer
-	-	Topic Transition Question: 
+  -	Topic Transition Question: 
       - motivation: Moving on to a new topic or smoothly transitioning between related topics.
-	-	Opinion Seeking Question: 
+  -	Opinion Seeking Question: 
       - motivation: Asking for personal views or opinions.
-	-	Speculative Inquiry Question: 
+  -	Speculative Inquiry Question: 
       - motivation: Requesting predictions or speculation about future events.
-	-	Fact-Checking Question: 
+  -	Fact-Checking Question: 
       - motivation: Verifying the accuracy of a statement or claim.
-	-	Confirmation Question: 
+  -	Confirmation Question: 
       - motivation: Confirming an understanding or interpretation of previous statements.
-	-	Clarification Question: 
+  -	Clarification Question: 
       - motivation: Seeking to clarify a vague or incomplete answer.
-	-	Contradiction Challenge Question: 
+  -	Contradiction Challenge Question: 
       - motivation: Pointing out inconsistencies or contradictions.
-	-	Critical Inquiry Question: 
+  -	Critical Inquiry Question: 
       - motivation: Critically questioning the interviewee’s stance or actions.
-	-	Scope Expansion Question: 
+  -	Scope Expansion Question: 
       - motivation: Broadening the discussion to include additional or more general topics.
 
 Below is the following interview transcript section.
@@ -78,7 +78,7 @@ Here is the last question asked in the transcript section:
 
 The format of your response should be in this sequence:
   1. First, repeat the question, then explain your thought process. Pick the single label you think best categorizes the question based on the taxonomy provided above.
-  2. Then, return your guess of the question type in brackets (both the category and the subcategory).
+  2. Then, return your guess of the question type in brackets.
     Here are some examples of correct label formatting: 
     ex 1. This type of question is: [Initial Inquiry Question]
     ex 2. This type of question is: [Establishing Empathy Question]
@@ -88,39 +88,50 @@ Don't include the motivation inside the brackets, and don't include multiple lab
 
 # this prompt instructs LLM to classify the question given a question type taxonomy
 CLASSIFY_ALL_QUESTIONS_USING_TAXONOMY_PROMPT = '''
-Here is a comprehensive taxonomy of journalist question types/motivations:
-Kick-Off Question:
-  - Initial Inquiry: Asking for basic information on a topic.
-Acknowledgement Statement:
-  - Establish Empathy: Acknowledges what the guest is saying, doesn't need to be a question.
-Follow-Up Question:
-  - Elaboration: Asking the interviewee to provide more details on a specific point.
-  - Probing: Digging deeper into a topic to uncover more information or hidden insights.
-  - Re-asking: Rephrasing a question to get a direct answer if the initial response was unsatisfactory.
-Topic Transition Question:
-  - New Topic Introduction: Moving on to a completely new topic.
-  - Segway: Smoothly transitioning from one related topic to another.
-Opinion and Speculation Question:
-  - Opinion Seeking: Asking for the interviewee’s personal views or opinions.
-  - Speculative Inquiry: Asking the interviewee to speculate or predict future events.
-Verification Question:
-  - Fact-Checking: Verifying the accuracy of a statement or claim made by the interviewee.
-  - Confirmation: Confirming an understanding or interpretation of the interviewee’s previous statements.
-  - Clarification: Seeking to clarify a vague or incomplete answer.
-Challenge Question:
-  - Contradiction: Pointing out inconsistencies or contradictions in the interviewee’s statements.
-  - Critical Inquiry: Critically questioning the interviewee’s stance or actions.
-Broadening Question:
-  - Scope Expansion: Expanding the scope of the interview to include more general or additional topics.
+Here is a comprehensive taxonomy of journalist question type labels and their corresponding motivations:
+  -	Initial Inquiry Question: 
+      - motivation: Asking for basic information on a topic.
+  -   Establishing Empathy Question: 
+      - motivation: Making an acknowledgment statement to build rapport.
+  -	Elaboration Question: 
+      - motivation: Asking for more details on a specific point.
+  -	Probing Question: 
+      - motivation: Digging deeper to uncover more information or hidden insights.
+  -	Rephrasing Question: 
+      - motivation: Re-asking or rephrasing a question to obtain a clearer or more direct answer
+  -	Topic Transition Question: 
+      - motivation: Moving on to a new topic or smoothly transitioning between related topics.
+  -	Opinion Seeking Question: 
+      - motivation: Asking for personal views or opinions.
+  -	Speculative Inquiry Question: 
+      - motivation: Requesting predictions or speculation about future events.
+  -	Fact-Checking Question: 
+      - motivation: Verifying the accuracy of a statement or claim.
+  -	Confirmation Question: 
+      - motivation: Confirming an understanding or interpretation of previous statements.
+  -	Clarification Question: 
+      - motivation: Seeking to clarify a vague or incomplete answer.
+  -	Contradiction Challenge Question: 
+      - motivation: Pointing out inconsistencies or contradictions.
+  -	Critical Inquiry Question: 
+      - motivation: Critically questioning the interviewee’s stance or actions.
+  -	Scope Expansion Question: 
+      - motivation: Broadening the discussion to include additional or more general topics.
 
-Here is the following interview transcript:
+Below is the following interview transcript:
 {transcript}
 
-Here is a question I want you to classify from the transcript: {question}
-Please classify the type of this question, based on the taxonomy provided above. 
-First explain your thought process, then return your guess of the question type in brackets (both the category and the subcategory from the taxonomy). Make sure your category and subcategory follows from the taxonomy exactly.
-    For example: [Acknowledgement Statement - Establish empathy]
-If you believe that the type of the question is not in the current taxonomy, please format your answer as: [Other]
+Here is the question from the transcript I want you to classify using the taxonomy: 
+{question}
+
+The format of your response should be in this sequence:
+  1. First, repeat the question, then explain your thought process. Pick the single label you think best categorizes the question based on the taxonomy provided above.
+  2. Then, return your guess of the question type in brackets.
+    Here are some examples of correct label formatting: 
+    ex 1. This type of question is: [Initial Inquiry Question]
+    ex 2. This type of question is: [Establishing Empathy Question]
+    ex 3. This type of question is: [Rephrasing Question]
+Don't include the motivation inside the brackets, and don't include multiple labels. Make sure only a single guess for the question type is inside the brackets.
 '''
 
 # this prompt instructs LLM to evaluate two different questions based on dimensions of similarity

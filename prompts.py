@@ -24,7 +24,7 @@ TAXONOMY = [
     "acknowledgement statement",
     "follow-Up question",
     "topic transition question",
-    "opinion/Speculation question",
+    "opinion/speculation question",
     "verification question",
     "challenge question", 
     "broadening question"
@@ -59,12 +59,12 @@ Here is the last question asked in the transcript section:
 {question}
 
 The format of your response should be in this sequence:
-  1. First, repeat the question, then explain your thought process. Pick the single label you think best categorizes the question based on the taxonomy provided above.
+  1. First, repeat the taxonomy labels, then explain your thought process given the question. Pick the single label you think best categorizes the question based on the taxonomy provided above.
   2. Then, return your guess of the question type in brackets.
     Here are some examples of correct label formatting: 
-    ex 1. This type of question is: [Initial Inquiry Question]
-    ex 2. This type of question is: [Establishing Empathy Question]
-    ex 3. This type of question is: [Rephrasing Question]
+    ex 1. [Kick-Off/Ending Remark]
+    ex 2. [Follow-Up Question]
+    ex 3. [Opinion/Speculation Question]
 Don't include the motivation inside the brackets, and don't include multiple labels. Make sure only a single guess for the question type is inside the brackets.
 '''
 
@@ -95,39 +95,13 @@ Here is the question from the transcript I want you to classify using the taxono
 {question}
 
 The format of your response should be in this sequence:
-  1. First, repeat the question, then explain your thought process. Pick the single label you think best categorizes the question based on the taxonomy provided above.
+  1. First, repeat the taxonomy labels, then explain your thought process given the question. Pick the single label you think best categorizes the question based on the taxonomy provided above.
   2. Then, return your guess of the question type in brackets.
     Here are some examples of correct label formatting: 
-    ex 1. This type of question is: [Initial Inquiry Question]
-    ex 2. This type of question is: [Establishing Empathy Question]
-    ex 3. This type of question is: [Rephrasing Question]
+    ex 1. [Kick-Off/Ending Remark]
+    ex 2. [Follow-Up Question]
+    ex 3. [Opinion/Speculation Question]
 Don't include the motivation inside the brackets, and don't include multiple labels. Make sure only a single guess for the question type is inside the brackets.
-'''
-
-# this prompt instructs LLM to evaluate two different questions based on dimensions of similarity
-WIP_DIMENSION_OF_SIMILARITY_PROMPT = '''
-Evaluate the consistency between the following two questions based on four dimensions:
-    1. Informational: Do the questions target the same specific information or facts?
-    2. Motivational: Do the questions have the same motivation or underlying purpose?
-    3. Contextual: Are both questions equally appropriate for the specific context provided?
-    4. Stylistic: Do the questions have similar styles in terms of tone, complexity, and structure?
-
-    Please label each dimension with either "yes" or "no".
-
-    Transcript Context: {transcript_context}
-
-    LLM Question: {LLM_question}
-
-    Human Question: {human_question}
-
-    Please take things step by step by first explaining your thought process for each dimension. 
-    Then, return your label for each dimension in the following format as your final answer: [Informational label, Motivational label, Contextual label, Stylistic label]
-
-    Example 1: [Yes, Yes, No, Yes]
-    Example 2: [No, No, No, No]
-    Example 3: [Yes, No, Yes, No]
-
-    Make sure that only your final answer has brackets.
 '''
 
 # this prompt instructs LLM to evaluate two different questions based on dimensions of similarity

@@ -18,26 +18,8 @@ FINE_GRAINED_TAXONOMY = [
     "other"
 ]
 
-# new taxonomy: single level of classification while still capturing the essence of each cat/subcat
-# include only the topic level labels
+# course grained taxonomy
 TAXONOMY = [
-    "initial inquiry question",
-    "establishing empathy question",
-    "elaboration question",
-    "probing question",
-    "rephrasing question",
-    "topic transition question",
-    "opinion seeking question",
-    "speculative inquiry question",
-    "fact-checking question",
-    "confirmation question",
-    "clarification question",
-    "contradiction challenge question",
-    "critical inquiry question",
-    "scope expansion question"
-]
-
-COURSE_GRAINED_TAXONOMY = [
     "kick-off/ending remark"
     "acknowledgement statement",
     "follow-Up question",

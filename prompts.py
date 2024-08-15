@@ -19,6 +19,7 @@ FINE_GRAINED_TAXONOMY = [
 ]
 
 # new taxonomy: single level of classification while still capturing the essence of each cat/subcat
+# include only the topic level labels
 TAXONOMY = [
     "initial inquiry question",
     "establishing empathy question",
@@ -36,37 +37,36 @@ TAXONOMY = [
     "scope expansion question"
 ]
 
+COURSE_GRAINED_TAXONOMY = [
+    "kick-off/ending remark"
+    "acknowledgement statement",
+    "follow-Up question",
+    "topic transition question",
+    "opinion/Speculation question",
+    "verification question",
+    "challenge question", 
+    "broadening question"
+]
+
 # this prompt instructs LLM to classify the last question in the current interview transcript, given a question type taxonomy
 CLASSIFY_USING_TAXONOMY_PROMPT = '''
 Here is a comprehensive taxonomy of journalist question type labels and their corresponding motivations:
-  -	Initial Inquiry Question: 
-      - motivation: Asking for basic information on a topic.
-  -   Establishing Empathy Question: 
-      - motivation: Making an acknowledgment statement to build rapport.
-  -	Elaboration Question: 
-      - motivation: Asking for more details on a specific point.
-  -	Probing Question: 
-      - motivation: Digging deeper to uncover more information or hidden insights.
-  -	Rephrasing Question: 
-      - motivation: Re-asking or rephrasing a question to obtain a clearer or more direct answer
-  -	Topic Transition Question: 
-      - motivation: Moving on to a new topic or smoothly transitioning between related topics.
-  -	Opinion Seeking Question: 
-      - motivation: Asking for personal views or opinions.
-  -	Speculative Inquiry Question: 
-      - motivation: Requesting predictions or speculation about future events.
-  -	Fact-Checking Question: 
-      - motivation: Verifying the accuracy of a statement or claim.
-  -	Confirmation Question: 
-      - motivation: Confirming an understanding or interpretation of previous statements.
-  -	Clarification Question: 
-      - motivation: Seeking to clarify a vague or incomplete answer.
-  -	Contradiction Challenge Question: 
-      - motivation: Pointing out inconsistencies or contradictions.
-  -	Critical Inquiry Question: 
-      - motivation: Critically questioning the interviewee’s stance or actions.
-  -	Scope Expansion Question: 
-      - motivation: Broadening the discussion to include additional or more general topics.
+ - Kick-Off/Ending Remark:
+   - Motivation: To initiate or conclude the interview.
+ - Acknowledgement Statement:
+   - Motivation: To recognize or affirm a previous response or statement made by the interviewee. This can create rapport, demonstrate active listening and empathy.
+ - Follow-Up Question:
+   - Motivation: To dig deeper into a topic that has already been discussed, seeking further elaboration, or re-phrasing a previous question.
+ - Topic Transition Question:
+   - Motivation: To smoothly shift the conversation from one subject to another. These questions help maintain the flow of the interview and introduce new topics.
+ - Opinion/Speculation Question:
+   - Motivation: To solicit the interviewee's personal views or predictions about a subject, often aiming to reveal biases, insights, or potential foresight.
+ - Verification Question:
+   - Motivation: To confirm the accuracy of a statement, fact, or assumption. This type of question seeks to ensure that information is correct and reliable.
+ - Challenge Question:
+   - Motivation: To test the interviewee's position, argument, or credibility. These questions are often used to provoke thought, debate, or to highlight inconsistencies.
+ - Broadening Question:
+   - Motivation: To expand the scope of the discussion, encouraging the interviewee to think about the topic in a broader context or from different perspectives.
 
 Below is the following interview transcript section.
 
@@ -89,34 +89,22 @@ Don't include the motivation inside the brackets, and don't include multiple lab
 # this prompt instructs LLM to classify the question given a question type taxonomy
 CLASSIFY_ALL_QUESTIONS_USING_TAXONOMY_PROMPT = '''
 Here is a comprehensive taxonomy of journalist question type labels and their corresponding motivations:
-  -	Initial Inquiry Question: 
-      - motivation: Asking for basic information on a topic.
-  -   Establishing Empathy Question: 
-      - motivation: Making an acknowledgment statement to build rapport.
-  -	Elaboration Question: 
-      - motivation: Asking for more details on a specific point.
-  -	Probing Question: 
-      - motivation: Digging deeper to uncover more information or hidden insights.
-  -	Rephrasing Question: 
-      - motivation: Re-asking or rephrasing a question to obtain a clearer or more direct answer
-  -	Topic Transition Question: 
-      - motivation: Moving on to a new topic or smoothly transitioning between related topics.
-  -	Opinion Seeking Question: 
-      - motivation: Asking for personal views or opinions.
-  -	Speculative Inquiry Question: 
-      - motivation: Requesting predictions or speculation about future events.
-  -	Fact-Checking Question: 
-      - motivation: Verifying the accuracy of a statement or claim.
-  -	Confirmation Question: 
-      - motivation: Confirming an understanding or interpretation of previous statements.
-  -	Clarification Question: 
-      - motivation: Seeking to clarify a vague or incomplete answer.
-  -	Contradiction Challenge Question: 
-      - motivation: Pointing out inconsistencies or contradictions.
-  -	Critical Inquiry Question: 
-      - motivation: Critically questioning the interviewee’s stance or actions.
-  -	Scope Expansion Question: 
-      - motivation: Broadening the discussion to include additional or more general topics.
+ - Kick-Off/Ending Remark:
+   - Motivation: To initiate or conclude the interview.
+ - Acknowledgement Statement:
+   - Motivation: To recognize or affirm a previous response or statement made by the interviewee. This can create rapport, demonstrate active listening and empathy.
+ - Follow-Up Question:
+   - Motivation: To dig deeper into a topic that has already been discussed, seeking further elaboration, or re-phrasing a previous question.
+ - Topic Transition Question:
+   - Motivation: To smoothly shift the conversation from one subject to another. These questions help maintain the flow of the interview and introduce new topics.
+ - Opinion/Speculation Question:
+   - Motivation: To solicit the interviewee's personal views or predictions about a subject, often aiming to reveal biases, insights, or potential foresight.
+ - Verification Question:
+   - Motivation: To confirm the accuracy of a statement, fact, or assumption. This type of question seeks to ensure that information is correct and reliable.
+ - Challenge Question:
+   - Motivation: To test the interviewee's position, argument, or credibility. These questions are often used to provoke thought, debate, or to highlight inconsistencies.
+ - Broadening Question:
+   - Motivation: To expand the scope of the discussion, encouraging the interviewee to think about the topic in a broader context or from different perspectives.
 
 Below is the following interview transcript:
 {transcript}

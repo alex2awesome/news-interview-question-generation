@@ -81,7 +81,8 @@ def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     for interview_id in unique_interviews:
-        if last_processed_id is not None and interview_id <= last_processed_id:
+        interview_num = int(interview_id.split('-')[1])
+        if last_processed_id is not None and interview_num <= last_processed_id:
             continue
         try:
             interview_df = df[df['id'] == interview_id]

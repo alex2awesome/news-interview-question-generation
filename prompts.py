@@ -20,7 +20,7 @@ FINE_GRAINED_TAXONOMY = [
 
 # course grained taxonomy
 TAXONOMY = [
-    "kick-off/ending remark"
+    "starting/ending remarks"
     "acknowledgement statement",
     "follow-Up question",
     "topic transition question",
@@ -30,9 +30,7 @@ TAXONOMY = [
     "broadening question"
 ]
 
-# this prompt instructs LLM to classify the last question in the current interview transcript, given a question type taxonomy
-CLASSIFY_USING_TAXONOMY_PROMPT = '''
-Here is a comprehensive taxonomy of journalist question type labels and their corresponding motivations:
+DEFINITIONS = '''
  - Kick-Off/Ending Remark:
    - Motivation: To initiate or conclude the interview.
  - Acknowledgement Statement:
@@ -49,14 +47,20 @@ Here is a comprehensive taxonomy of journalist question type labels and their co
    - Motivation: To test the interviewee's position, argument, or credibility. These questions are often used to provoke thought, debate, or to highlight inconsistencies.
  - Broadening Question:
    - Motivation: To expand the scope of the discussion, encouraging the interviewee to think about the topic in a broader context or from different perspectives.
+'''
+
+# this prompt instructs LLM to classify the last question in the current interview transcript, given a question type taxonomy
+CLASSIFY_USING_TAXONOMY_PROMPT = f'''
+Here is a comprehensive taxonomy of question-type labels and their corresponding definitions:
+{DEFINITIONS}
 
 Below is the following interview transcript section.
 
 Interview Transcript Section:
-{transcript_section}
+{{transcript_section}}
 
 Here is the last question asked in the transcript section: 
-{question}
+{{question}}
 
 The format of your response should be in this sequence:
   1. First, repeat the taxonomy labels, then explain your thought process given the question. Pick the single label you think best categorizes the question based on the taxonomy provided above.

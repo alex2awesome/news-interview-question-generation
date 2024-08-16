@@ -9,7 +9,7 @@ import pandas as pd
 from transformers import AutoTokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, vllm_infer_batch, extract_text_inside_brackets
-from prompts import CLASSIFY_ALL_QUESTIONS_USING_TAXONOMY_PROMPT, TAXONOMY
+from prompts import get_classify_all_questions_taxonomy_prompt, TAXONOMY
 import logging
 
 logging.basicConfig(
@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 
 def all_questions_type_classification_prompt_loader(QA_seq, question):
-    prompt = CLASSIFY_ALL_QUESTIONS_USING_TAXONOMY_PROMPT.format(transcript=QA_seq, question=question)
+    prompt = get_classify_all_questions_taxonomy_prompt(QA_seq, question)
     messages = [
         {"role": "system", "content": "You are a world-class annotator for interview questions."},
         {"role": "user", "content": prompt}
@@ -60,6 +60,8 @@ def extract_interviewer_questions(utt, speaker):
 
     return questions, answers
 
+# if we want to be randomly sampling, you will have to modify the regex that takes the "NPR-X" 
+# from the id because not all values in the id column are of the form "NPR-X"
 def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/all_questions_classified", num_interviews=150, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     os.makedirs(output_dir, exist_ok=True)
     existing_files = [f for f in os.listdir(output_dir) if re.match(r'interview_NPR-(\d+)\.csv', f)]    

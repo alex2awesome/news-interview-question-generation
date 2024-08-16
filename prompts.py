@@ -77,60 +77,64 @@ FORMAT = '''
 The format of your response should be in this sequence:
   1. First, explain your thought process given the question. Pick the single label, or labels, you think best categorize the question, based on the taxonomy above.
   2. Then, return your guess of the question type, in brackets.
-Don't include the motivation inside the brackets.
+Don't include the definition inside the brackets.
 '''
 
 # this prompt instructs LLM to classify the last question in the current interview transcript, given a question type taxonomy
-CLASSIFY_USING_TAXONOMY_PROMPT = f'''
-I am trying to understand the kinds of questions asked by journalists. 
-I will show you the question the journalist asks. I will also show you the conversational history between the journalist and source for context.
-Please label the question according to the following 8 categories of questions we've identified.
+def get_classify_taxonomy_prompt(transcript_section, question):
+      prompt = f'''
+      I am trying to understand the kinds of questions asked by journalists. 
+      I will show you the question the journalist asks. I will also show you the conversational history between the journalist and source for context.
+      Please label the question according to the following 8 categories of questions we've identified.
 
-Here are the schema categories:
+      Here are the schema categories:
 
-{DEFINITIONS}
+      {DEFINITIONS}
 
-{FORMAT}
+      {FORMAT}
 
-Here are some examples (here, I show just the questions to save space):
+      Here are some examples (here, I show just the questions to save space):
 
-{FEW_SHOT_EXAMPLES}
+      {FEW_SHOT_EXAMPLES}
 
-Now it's your turn.
+      Now it's your turn.
 
-Below is the interview transcript:
-{{transcript_section}}
+      Below is the interview transcript:
+      {transcript_section}
 
-Here is the next question asked, which you will classify: 
-Question: {{question}}
-Response:
-'''
+      Here is the next question asked, which you will classify: 
+      Question: {question}
+      Response:
+      '''
+      return prompt
 
 # this prompt instructs LLM to classify the question given a question type taxonomy
-CLASSIFY_ALL_QUESTIONS_USING_TAXONOMY_PROMPT = f'''
-I am trying to understand the kinds of questions asked by journalists. 
-I will show you the conversational history between the journalist and source. I will then ask about a specific question in that history.
-Please label the question according to the following 8 categories of questions we've identified.
+def get_classify_all_questions_taxonomy_prompt(transcript, question):
+      prompt = f'''
+      I am trying to understand the kinds of questions asked by journalists. 
+      I will show you the conversational history between the journalist and source. I will then ask about a specific question in that history.
+      Please label the question according to the following 8 categories of questions we've identified.
 
-Here are the schema categories:
+      Here are the schema categories:
 
-{DEFINITIONS}
+      {DEFINITIONS}
 
-{FORMAT}
+      {FORMAT}
 
-Here are some examples (here, I show just the questions to save space):
+      Here are some examples (here, I show just the questions to save space):
 
-{FEW_SHOT_EXAMPLES}
+      {FEW_SHOT_EXAMPLES}
 
-Now it's your turn.
+      Now it's your turn.
 
-Below is the following interview transcript:
-{{transcript}}
+      Below is the following interview transcript:
+      {transcript}
 
-Here is the question from the transcript I want you to classify using the taxonomy: 
-Question: {{question}}
-Response:
-'''
+      Here is the question from the transcript I want you to classify using the taxonomy: 
+      Question: {question}
+      Response:
+      '''
+      return prompt
 
 # this prompt instructs LLM to evaluate two different questions based on dimensions of similarity
 DIMENSION_OF_SIMILARITY_PROMPT = '''

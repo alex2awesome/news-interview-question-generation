@@ -192,5 +192,7 @@ def process_jsonl_files(original_df, data_path = "output_results/gpt_batching/ba
 
 if __name__ == "__main__":
     df = pd.read_csv("/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/final_dataset.csv")
-    generate_batched_schema_classification_prompts(df, sample_size=3)
+    generate_batched_schema_classification_prompts(df, sample_size=150)
     process_jsonl_files(df)
+
+    # to download the csv files, navigate to output_results/gpt_batching/gpt4o_csv_outputs

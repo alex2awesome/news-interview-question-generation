@@ -134,7 +134,7 @@ def extract_text_inside_brackets(text):
     match = re.search(r'\[(.*?)\]', text)
     if match:
         return match.group(1)
-    return "Error"
+    return "No label(s) in brackets"
 
 # given "ABC{XYZ}EFG", return "XYZ"
 def extract_text_inside_parentheses(text):
@@ -173,6 +173,6 @@ def price_calculator(tok_count, model='gpt-4o', batch=False):
     return f'total price: ${0.000005 * tok_count}'
 
 if __name__ == "__main__": 
-    dataset_path = os.path.join("dataset", "test_dataset_1000.csv")
-    df = create_QA_Sequence_df_N_qa_pairs(dataset_path, 3)
-    print(df.head())
+    text = "[X, Y, Z]"
+    extracted_text = extract_text_inside_brackets(text)
+    print(extracted_text)

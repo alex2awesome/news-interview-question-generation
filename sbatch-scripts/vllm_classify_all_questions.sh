@@ -14,4 +14,4 @@ cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 
 source env_setup.sh
 
-python -m data_processing.classify_all_questions
+python -m data_processing.vllm_classify_all_questions

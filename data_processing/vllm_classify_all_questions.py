@@ -26,11 +26,12 @@ def all_questions_type_classification_prompt_loader(QA_seq, question):
     ]
     return messages
 
+# ask alex if need multi-label functionality
 def classify_question_batch(QA_Sequences, questions, model, tokenizer):
     messages_batch = [all_questions_type_classification_prompt_loader(QA_seq, question) for QA_seq, question in zip(QA_Sequences, questions)]
     formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
     outputs = vllm_infer_batch(formatted_prompts, model)
-    question_types = [extract_text_inside_brackets(output) if extract_text_inside_brackets(output).lower() in TAXONOMY else "Error" for output in outputs]
+    question_types = [extract_text_inside_brackets(output) if extract_text_inside_brackets(output).lower() in TAXONOMY else extract_text_inside_brackets(output) for output in outputs]
     return question_types
 
 def extract_interviewer_questions(utt, speaker):
@@ -39,8 +40,22 @@ def extract_interviewer_questions(utt, speaker):
     current_question = []
     current_answer = []
 
+    interviewer = None
+    for s in speaker:
+        if 'host' in s.lower():
+            interviewer = s
+            break
+    if not interviewer:
+        interviewer = speaker[0]
+
+    # makes sure there's more than one unique speaker in the speaker list, return "not validate interview" lists
+    unique_speakers = set([s.split(",")[0].strip() for s in speaker])
+    if len(unique_speakers) == 1:
+        half_length = len(speaker) // 2
+        return ["not validate 1-on-1 interview"] * half_length, ["not validate 1-on-1 interview"] * half_length
+
     for i in range(len(utt)):
-        if 'host' in speaker[i].lower():
+        if interviewer.lower() in speaker[i].lower() or speaker[i].lower() in interviewer.lower():
             if current_answer:
                 questions.append(" ".join(current_question))
                 answers.append(" ".join(current_answer))
@@ -62,7 +77,7 @@ def extract_interviewer_questions(utt, speaker):
 
 # if we want to be randomly sampling, you will have to modify the regex that takes the "NPR-X" 
 # from the id because not all values in the id column are of the form "NPR-X"
-def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/all_questions_classified", num_interviews=150, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/vllm_all_questions_classified", num_interviews=150, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     os.makedirs(output_dir, exist_ok=True)
     existing_files = [f for f in os.listdir(output_dir) if re.match(r'interview_NPR-(\d+)\.csv', f)]    
     if existing_files:
@@ -125,5 +140,5 @@ def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects
 if __name__ == "__main__":
     df = pd.read_csv("/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/final_dataset.csv")
     print(df)
-    classify_each_question(df, num_interviews=150, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
-    print('done running!')
+    classify_each_question(df, num_interviews=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    

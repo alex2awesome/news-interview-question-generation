@@ -9,6 +9,9 @@
 # JSON files
 *.json
 
+# JSONL files
+*.jsonl
+
 # XML files
 *.xml
 

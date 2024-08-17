@@ -24,8 +24,22 @@ def extract_interviewer_questions(utt, speaker):
     current_question = []
     current_answer = []
 
+    interviewer = None
+    for s in speaker:
+        if 'host' in s.lower():
+            interviewer = s
+            break
+    if not interviewer:
+        interviewer = speaker[0]
+
+    # makes sure there's more than one unique speaker in the speaker list, return "not validate interview" lists
+    unique_speakers = set([s.split(",")[0].strip() for s in speaker])
+    if len(unique_speakers) == 1:
+        half_length = len(speaker) // 2
+        return ["not validate 1-on-1 interview"] * half_length, ["not validate 1-on-1 interview"] * half_length
+    
     for i in range(len(utt)):
-        if 'host' in speaker[i].lower():
+        if interviewer.lower() in speaker[i].lower() or speaker[i].lower() in interviewer.lower():
             if current_answer:
                 questions.append(" ".join(current_question))
                 answers.append(" ".join(current_answer))
@@ -47,9 +61,9 @@ def extract_interviewer_questions(utt, speaker):
 
 def generate_batched_schema_classification_prompts(df, output_dir="output_results/gpt_batching/batch_prompts", sample_size=150):
     os.makedirs(output_dir, exist_ok=True)
-    random_sample = df.sample(n=sample_size, random_state=42)
+    random_sample_df = df.sample(n=sample_size, random_state=42)
 
-    for idx, row in random_sample.iterrows():
+    for idx, row in random_sample_df.iterrows():
         interview_id = row['id']
         interview_df = df[df['id'] == interview_id].reset_index(drop=True)
         
@@ -148,7 +162,7 @@ def gpt_save_results_to_csv(original_df, jsonl_path, csv_output_dir="output_resu
         for i, line in enumerate(file):
             result = json.loads(line)
             content = result.get("response", {}).get("body", {}).get("choices", [])[0].get("message", {}).get("content", "")
-            question_type = extract_text_inside_brackets(content)
+            question_type = extract_text_inside_brackets(content) if extract_text_inside_brackets(content).lower() in TAXONOMY else f"(MISC) {extract_text_inside_brackets(content)}"
             
             data.append({
                 "Interview id": "", 
@@ -163,14 +177,28 @@ def gpt_save_results_to_csv(original_df, jsonl_path, csv_output_dir="output_resu
     df.to_csv(csv_output_path, index=False)
     logging.info(f"Results saved to {csv_output_path}")
 
+def extract_interview_ids_from_filenames(filenames):
+    return {os.path.splitext(f)[0].split('_')[0] for f in filenames}
+
 def process_jsonl_files(original_df, data_path = "output_results/gpt_batching/batch_prompts", output_dir="output_results/gpt_batching/gpt_type_classify"):
     os.makedirs(output_dir, exist_ok=True)
-    jsonl_files = [f for f in os.listdir(data_path) if f.endswith('.jsonl')]
-    
-    for jsonl_file in jsonl_files:
-        file_path = os.path.join(data_path, jsonl_file)
-        interview_id = os.path.splitext(jsonl_file)[0].split('_')[0]
+    batch_files = [f for f in os.listdir(data_path) if f.endswith('.jsonl')]
+    all_interview_ids = extract_interview_ids_from_filenames(batch_files)
 
+    processed_files = [f for f in os.listdir(output_dir) if f.endswith('.jsonl')]
+    processed_interview_ids = extract_interview_ids_from_filenames(processed_files)
+
+    remaining_interview_ids = all_interview_ids - processed_interview_ids
+
+    for jsonl_file in batch_files:
+        
+        interview_id = os.path.splitext(jsonl_file)[0].split('_')[0]
+        if interview_id not in remaining_interview_ids:
+            logging.info(f"Skipping already processed interview ID: {interview_id}")
+            continue
+        
+        file_path = os.path.join(data_path, jsonl_file)
+        
         file_id = upload_jsonl_file(file_path)
         logging.info(f"Uploaded file ID: {file_id}")
 
@@ -192,7 +220,7 @@ def process_jsonl_files(original_df, data_path = "output_results/gpt_batching/ba
 
 if __name__ == "__main__":
     df = pd.read_csv("/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/final_dataset.csv")
-    generate_batched_schema_classification_prompts(df, sample_size=150)
+    # generate_batched_schema_classification_prompts(df, sample_size=150)
     process_jsonl_files(df)
 
     # to download the csv files, navigate to output_results/gpt_batching/gpt4o_csv_outputs

@@ -42,7 +42,7 @@ DEFINITIONS = '''
  - Topic-Transition Question:
    - Definition: Shifts the conversation from one subject to another. These questions introduce new topics into the interview, and are evidence of outline-level goals in the interview.
  - Opinion/Speculation Question:
-   - Definition: Solicits the interviewee's personal views or predictions about a subject. Can revealing biases and insights.
+   - Definition: Solicits the interviewee's personal views or predictions about a subject. Can reveal biases and insights.
  - Challenge Question:
    - Definition: Tests the interviewee's position, argument, or credibility. These questions are often used to provoke thought, debate, or to highlight inconsistencies.
  - Broadening Question:
@@ -50,23 +50,31 @@ DEFINITIONS = '''
 '''
 
 FEW_SHOT_EXAMPLES = '''
+  Previous Question Context: The economic impact of a newly implemented policy or mandate.
   Question: Can you explain more about how the mandate is hurting the economy?
   Response:
   The question seeks to dive deeper into a topic and get more information.
   [Follow-Up Question]
-
+  
+  Previous Question Context: Discussion about the interviewee’s previous work in various conflict zones around the world.
   Question: Now I want to talk about Syria. Can you explain how your work in Aleppo changed your career?
   Response:
-  It appears that Syria is a new topic, since the interview is shifting.
+  The topic has shifted from (topic A) the interviewee's work in conflict zones to (topic B) Syria in general.
   [Topic-Transition Question]
 
+  Previous Question Context: Presidential debate between Donald Trump and Hillary Clinton.
+  Question: Let's look forward to the vice presidential debate. This is happening Tuesday. Mike Pence, Tim Kaine will go head to head. We haven't heard a whole lot from either of them so far. Do you think they're just going to echo what their running mates have been saying?
+  Response: 
+  The topic has shifted from (topic A) the presidential debate to (topic B) the vice presidential debate. After some context, the interviewer then asks for the interviewee's opinion.
+  [Topic Transition Question, Opinion/Speculation Question]
 
+  Previous Question Context: Discussion on the ongoing handling of the COVID-19 pandemic by various government administrations.
   Question: Do you believe the current administration is handling the pandemic well?
   Response:
   The question appears to be asking for an opinion rather than a set of facts.
   [Opinion/Speculation Question]
 
-
+  Previous Question Context: The interviewee has just claimed that there will be a rise in unemployment in the next decade years.
   Can you provide evidence to support that claim?
   Response:
   The journalist is asking for further details specifically to back up a previous remark.
@@ -75,7 +83,7 @@ FEW_SHOT_EXAMPLES = '''
 
 FORMAT = '''
 The format of your response should be in this sequence:
-  1. First, explain your thought process given the question. Pick the single label, or labels, you think best categorize the question, based on the taxonomy above.
+  1. First, explain your thought process on how the given question relates to the previous question and corresponding answer. Then pick the single label, or labels, you think best categorize the question, based on the taxonomy above.
   2. Then, return your guess of the question type, in brackets.
 Don't include the definition inside the brackets.
 '''
@@ -84,7 +92,7 @@ Don't include the definition inside the brackets.
 def get_classify_taxonomy_prompt(transcript_section, question):
       prompt = f'''
       I am trying to understand the kinds of questions asked by journalists. 
-      I will show you the question the journalist asks. I will also show you the conversational history between the journalist and source for context.
+      I will show you the question the journalist asks. I will also show you the conversational history between the journalist (interviewer) and source (interviewee) for context.
       Please label the question according to the following 8 categories of questions we've identified.
 
       Here are the schema categories:
@@ -93,7 +101,7 @@ def get_classify_taxonomy_prompt(transcript_section, question):
 
       {FORMAT}
 
-      Here are some examples (here, I show just the questions to save space):
+      Here are some examples (here, I show just the previous question context and the given question to save space):
 
       {FEW_SHOT_EXAMPLES}
 
@@ -112,7 +120,7 @@ def get_classify_taxonomy_prompt(transcript_section, question):
 def get_classify_all_questions_taxonomy_prompt(transcript, question):
       prompt = f'''
       I am trying to understand the kinds of questions asked by journalists. 
-      I will show you the conversational history between the journalist and source. I will then ask about a specific question in that history.
+      I will show you the conversational history between the journalist (interviewer) and source (interviewee). I will then ask about a specific question in that history.
       Please label the question according to the following 8 categories of questions we've identified.
 
       Here are the schema categories:
@@ -264,3 +272,9 @@ Here is the interview so far:
 
 Remember to format your motivation in parentheses (), and your guess for the next question asked in brackets [].
 '''
+
+
+if __name__ == "__main__": 
+      transcript = "<transcript>"
+      question = "<question>"
+      print(get_classify_all_questions_taxonomy_prompt(transcript, question))

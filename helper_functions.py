@@ -127,6 +127,19 @@ def create_QA_Sequence_df_N_qa_pairs(dataset_filepath, N, output_dir="output_res
     df.to_csv(combined_file_path, index=False)
     return df
 
+def combine_csv_files(directory_path, output_file_name):
+    dataframes = []
+
+    for filename in os.listdir(directory_path):
+        if filename.endswith('.csv'):
+            file_path = os.path.join(directory_path, filename)
+            df = pd.read_csv(file_path)
+            dataframes.append(df)
+    
+    combined_df = pd.concat(dataframes, ignore_index=True)    
+    combined_df.to_csv(output_file_name, index=False)
+    print(f"Combined CSV saved to {output_file_name}")
+
 # ------------- extract data section ------------- #
 
 # given "ABC[XYZ]EFG", return "XYZ"
@@ -173,6 +186,6 @@ def price_calculator(tok_count, model='gpt-4o', batch=False):
     return f'total price: ${0.000005 * tok_count}'
 
 if __name__ == "__main__": 
-    text = "[X, Y, Z]"
-    extracted_text = extract_text_inside_brackets(text)
-    print(extracted_text)
+    directory_path = 'output_results/vllm_all_questions_classified'
+    output_file = 'output_results/vllm_all_questions_classified/all_interviews_combined.csv'
+    combine_csv_files(directory_path, output_file)

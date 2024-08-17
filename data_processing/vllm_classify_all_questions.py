@@ -75,8 +75,7 @@ def extract_interviewer_questions(utt, speaker):
 
     return questions, answers
 
-# if we want to be randomly sampling, you will have to modify the regex that takes the "NPR-X" 
-# from the id because not all values in the id column are of the form "NPR-X"
+# if we want to be randomly sampling, you will have to modify the regex that takes the "NPR-X" from the id because not all values in the id column are of the form "NPR-X"
 def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/vllm_all_questions_classified", num_interviews=150, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     os.makedirs(output_dir, exist_ok=True)
     existing_files = [f for f in os.listdir(output_dir) if re.match(r'interview_NPR-(\d+)\.csv', f)]    

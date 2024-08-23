@@ -5,7 +5,7 @@ import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer
-from game_sim_prompts import extraction_prompt_loader
+from game_sim_prompts import get_extraction_prompt
 
 # ---- single use ---- #
 def vllm_infer(messages, model, tokenizer):
@@ -25,7 +25,7 @@ def extract_information_items(transcripts, model, tokenizer):
     information_items = []
 
     for transcript in transcripts:
-        prompt = extraction_prompt_loader(transcript)
+        prompt = get_extraction_prompt(transcript)
         response = generate_vllm_response(prompt, "You are an AI extracting key information items from interview transcripts", model, tokenizer)
         information_items.append(response)
 
@@ -51,7 +51,7 @@ def extract_information_items_batch(transcripts, model, tokenizer, batch_size=10
     
     for i in range(0, len(transcripts), batch_size):
         batch = transcripts[i:i+batch_size]
-        prompts = [extraction_prompt_loader(transcript) for transcript in batch]
+        prompts = [get_extraction_prompt(transcript) for transcript in batch]
         batch_responses = generate_vllm_response_batch(prompts, roles[:len(batch)], model, tokenizer)
         information_items.extend(batch_responses)
     

@@ -198,7 +198,7 @@ def process_jsonl_files(original_df, data_path = "output_results/gpt_batching/ba
             continue
         
         file_path = os.path.join(data_path, jsonl_file)
-        
+
         file_id = upload_jsonl_file(file_path)
         logging.info(f"Uploaded file ID: {file_id}")
 
@@ -220,7 +220,10 @@ def process_jsonl_files(original_df, data_path = "output_results/gpt_batching/ba
 
 if __name__ == "__main__":
     df = pd.read_csv("/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/final_dataset.csv")
-    # generate_batched_schema_classification_prompts(df, sample_size=150)
+    unique_ids = ["NPR-194", "NPR-70", "NPR-58", "NPR-65"]
+    smaller_df = df[df['id'].isin(unique_ids)]
+    print(smaller_df)
+    # generate_batched_schema_classification_prompts(smaller_df, sample_size=4)
     process_jsonl_files(df)
 
     # to download the csv files, navigate to output_results/gpt_batching/gpt4o_csv_outputs

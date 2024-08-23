@@ -186,6 +186,6 @@ def price_calculator(tok_count, model='gpt-4o', batch=False):
     return f'total price: ${0.000005 * tok_count}'
 
 if __name__ == "__main__": 
-    directory_path = 'output_results/vllm_all_questions_classified'
-    output_file = 'output_results/vllm_all_questions_classified/all_interviews_combined.csv'
+    directory_path = 'output_results/gpt_batching/gpt4o_csv_outputs'
+    output_file = 'output_results/gpt_batching/gpt4o_csv_outputs/gpt_all_interviews_combined.csv'
     combine_csv_files(directory_path, output_file)

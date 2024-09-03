@@ -144,7 +144,7 @@ def combine_csv_files(directory_path, output_file_name):
 
 # given "ABC[XYZ]EFG", return "XYZ"
 def extract_text_inside_brackets(text):
-    match = re.search(r'\[(.*?)\]', text)
+    match = re.search(r'\[(.*?)\]', text, re.DOTALL)
     if match:
         return match.group(1)
     return "No label(s) in brackets"

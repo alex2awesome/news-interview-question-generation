@@ -1,10 +1,11 @@
 import os
+import sys
 import pandas as pd
-import json
-import torch
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
-from helper_functions import load_vllm_model, initialize_tokenizer
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets
+from game_sim.game_sim_prompts import get_source_prompt, get_interviewer_prompt
 
 # ---- single use ---- #
 def vllm_infer(messages, model, tokenizer):
@@ -20,29 +21,29 @@ def generate_vllm_response(prompt, role, model, tokenizer):
     ]
     return vllm_infer(messages, model, tokenizer)
 
-def conduct_interview(initial_prompt, num_turns, interviewer_role, interviewee_role, model_name="meta-llama/Meta-Llama-3-8B-Instruct"):
+def conduct_interview(initial_prompt, num_turns, model_name="meta-llama/Meta-Llama-3-8B-Instruct"):
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
 
     conversation_history = initial_prompt
+    print("Initial Prompt:")
     print(conversation_history)
 
-    for _ in range(num_turns):
-        interviewee_response = generate_vllm_response(conversation_history + "\nInterviewee:", interviewee_role, model, tokenizer)
-        print("\nInterviewee: " + interviewee_response)
+    for turn in range(num_turns):
+        interviewer_prompt = get_interviewer_prompt(conversation_history, "", "straightforward")
+        interviewer_question = generate_vllm_response(interviewer_prompt, "You are a journalistic interviewer.", model, tokenizer)
         
-        conversation_history += "\nInterviewee: " + interviewee_response
-        
-        interviewer_question = generate_vllm_response(conversation_history + "\nInterviewer:", interviewer_role, model, tokenizer)
+        conversation_history += f"\nInterviewer: {interviewer_question}"
         print("\nInterviewer: " + interviewer_question)
+
+        source_prompt = get_source_prompt(conversation_history, "", "honest")
+        interviewee_response = generate_vllm_response(source_prompt, "You are a guest getting interviewed.", model, tokenizer)
         
-        conversation_history += "\nInterviewer: " + interviewer_question
-    
-    # Generate final interviewee response
-    final_interviewee_response = generate_vllm_response(conversation_history + "\nInterviewee:", interviewee_role, model, tokenizer)
-    conversation_history += "\nInterviewee: " + final_interviewee_response
+        conversation_history += f"\nInterviewee: {interviewee_response}"
+        print("\nInterviewee: " + interviewee_response)
     
     print("\nFinal Conversation:\n" + conversation_history)
+    return conversation_history
 
 # ---- batch use ---- #
 def vllm_infer_batch(messages_batch, model, tokenizer):
@@ -51,113 +52,104 @@ def vllm_infer_batch(messages_batch, model, tokenizer):
     outputs = model.generate(formatted_prompts, sampling_params)
     return [output.outputs[0].text for output in outputs]
 
-def generate_vllm_response_batch(prompts, roles, model, tokenizer):
+def generate_vllm_INTERVIEWER_response_batch(prompts, model, tokenizer):
     messages_batch = [
-        [{"role": "system", "content": f"{role}."}, {"role": "user", "content": prompt}]
-        for prompt, role in zip(prompts, roles)
+        [
+            {"role": "system", "content": "You are a journalistic interviewer."}, 
+            {"role": "user", "content": prompt}
+        ]
+        for prompt in prompts
     ]
     return vllm_infer_batch(messages_batch, model, tokenizer)
 
-def conduct_interview_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=100, output_dir="output_results/game_sim"):
+def generate_vllm_SOURCE_response_batch(prompts, model, tokenizer):
+    messages_batch = [
+        [
+            {"role": "system", "content": "You are a guest getting interviewed"}, 
+            {"role": "user", "content": prompt}
+        ]
+        for prompt in prompts
+    ]
+    return vllm_infer_batch(messages_batch, model, tokenizer)
+
+def conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=100, output_dir="output_results/game_sim/conducted_interviews"):
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
 
-    num_samples = len(df)
-    final_conversations = [""] * num_samples
+    num_samples = len(df) # if 5 rows, num_samples = 5
+    final_conversations = [""] * num_samples # this list is to store the final conversation
     
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
         
         batch_df = df.iloc[start_idx:end_idx]
-        batch_prompts = batch_df['initial_prompt'].tolist()
-        batch_interviewer_roles = batch_df['interviewer_role'].tolist()
-        batch_interviewee_roles = batch_df['interviewee_role'].tolist()
+        info_items = batch_df['info_items']
+        outlines = batch_df['outlines']
         
-        for _ in range(num_turns):
-            # Generate interviewee responses in batch
-            interviewee_responses = generate_vllm_response_batch(
-                [ch + "\nInterviewee:" for ch in batch_prompts], 
-                batch_interviewee_roles, 
-                model, 
-                tokenizer
-            )
-            
-            # Update conversation histories with interviewee responses
-            batch_prompts = [
-                ch + "\nInterviewee: " + response 
-                for ch, response in zip(batch_prompts, interviewee_responses)
+        current_conversations = [""] * (end_idx - start_idx)
+        
+        for turn in range(num_turns):
+            # First, interviewer asks the question
+            interviewer_prompts = [
+                get_interviewer_prompt(current_conversation, outline, "straightforward")
+                for current_conversation, outline in zip(current_conversations, outlines)
             ]
-            
-            # Generate interviewer questions in batch
-            interviewer_questions = generate_vllm_response_batch(
-                [ch + "\nInterviewer:" for ch in batch_prompts], 
-                batch_interviewer_roles, 
-                model, 
-                tokenizer
-            )
-            
-            # Update conversation histories with interviewer questions
-            batch_prompts = [
-                ch + "\nInterviewer: " + question 
-                for ch, question in zip(batch_prompts, interviewer_questions)
-            ]
-        
-        # Generate final interviewee responses to ensure the interview ends with interviewee's response
-        final_interviewee_responses = generate_vllm_response_batch(
-            [ch + "\nInterviewee:" for ch in batch_prompts], 
-            batch_interviewee_roles, 
-            model, 
-            tokenizer
-        )
-        
-        # Finalize the conversation histories with the last interviewee response
-        batch_final_conversations = [
-            ch + "\nInterviewee: " + response 
-            for ch, response in zip(batch_prompts, final_interviewee_responses)
-        ]
-        
-        final_conversations[start_idx:end_idx] = batch_final_conversations
+            interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, model, tokenizer)
+            interviewer_questions = [extract_text_inside_brackets(response) for response in interviewer_responses]
 
-    df['simulated_interview'] = final_conversations
+            # Update current conversations with the interviewer questions
+            current_conversations = [
+                f"{ch}\nInterviewer: {question}"
+                for ch, question in zip(current_conversations, interviewer_questions)
+            ]
+
+            # Then, the interviewee responds
+            source_prompts = [
+                get_source_prompt(current_conversation, info_item, "honest")
+                for current_conversation, info_item in zip(current_conversations, info_items)
+            ]
+            interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
+
+            # Update current conversations with the interviewee responses
+            current_conversations = [
+                f"{ch}\nInterviewee: {response}"
+                for ch, response in zip(current_conversations, interviewee_responses)
+            ]
+
+        final_conversations[start_idx:end_idx] = current_conversations
+
+    new_df = pd.DataFrame({
+        'id': df['id'],
+        'combined_dialogue': df['combined_dialogue'],
+        'info_items': df['info_items'],
+        'outlines': df['outlines'],
+        'final_conversations': final_conversations
+    })
     
     os.makedirs(output_dir, exist_ok=True)
     output_file_path = os.path.join(output_dir, "conducted_interviews.csv")
-    df.to_csv(output_file_path, index=False)
+    new_df.to_csv(output_file_path, index=False)
     print(f"CSV file saved to {output_file_path}")
-    return df
+    return new_df
 
 if __name__ == "__main__": 
-    data = {
-    'initial_prompt': [
-        "Interviewer: Can you tell us about the most exciting recent advancements in AI?",
-        "Interviewer: What are the key challenges facing AI research today?"
-    ],
-    'interviewer_role': [
-        "You are a journalist asking interview questions", 
-        "You are a senior journalist conducting a deep dive"
-    ],
-    'interviewee_role': [
-        "You are an AI researcher answering interview questions. Please respond with full sentence dialogue. No bullet points or lists allowed", 
-        "You are an AI expert providing detailed insights. Please respond with full sentence dialogue. No bullet points or lists allowed"
-    ]
-    }
-    df = pd.DataFrame(data)
-    print(df)
-    num_turns = 3
-
-    simulated_interviews = conduct_interview_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    data_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/outlines/final_df_with_outlines.csv"
+    df = pd.read_csv(data_path)
+    df = df.head(3)
+    print(df) # df has columns info_items and outlines
+    
+    num_turns = 5
+    simulated_interviews = conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
     print(f"dataset with simulated interviews: {simulated_interviews}\n")
     
-    for i, interview in enumerate(simulated_interviews['simulated_interview']):
-        print(f"Interview{i+1}:\n {interview}")
-
+    for i, interview in enumerate(simulated_interviews['final_conversations']):
+         print(f"Interview {i+1}:\n {interview}\n\n\n")
+    
     '''
-    how batching will work:
 
-    from the dataset of interviews, take each interview, process it into key information, store these key pieces of information in a column called 
+    from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.
     
-    
-    finally column structure of the dataset:
+    column structure of the database outputted:
 
-    id | interview transcript (QA Sequence) | information_items | initial_prompt | interviewer_role | interviewee_role | 
+    'id' | 'combined_dialogue' | 'info_items' | 'outlines' | 'final_conversations'
     '''

@@ -23,7 +23,7 @@ TAXONOMY = [
     "starting/ending remarks"
     "acknowledgement statement",
     "follow-up question",
-    "topic-transition question",
+    "outline-level question",
     "opinion/speculation question",
     "verification question",
     "challenge question", 
@@ -119,6 +119,12 @@ FEW_SHOT_EXAMPLES = '''
   The topic has shifted from (topic A) the presidential debate to (topic B) the vice presidential debate. After some context, the interviewer then asks for the interviewee's opinion.
   [Outline-Level Question, Opinion/Speculation Question]
 
+  Previous Question Context: The source is discussing strategy.
+  Question: OK.
+  Response:
+  The question is affirming what the source is saying.
+  [Acknowledgement Statement]
+
   Previous Question Context: Discussion on the ongoing handling of the COVID-19 pandemic by various government administrations.
   Question: Do you believe the current administration is handling the pandemic well?
   Response:
@@ -131,11 +137,23 @@ FEW_SHOT_EXAMPLES = '''
   The journalist is asking for further details specifically to back up a previous remark.
   [Verification Question]
 
+  Previous Question Context: The source has just explained something.
+  Question: Right. No. That makes sense. I see what you're talking about.
+  Response:
+  The journalist is agreeing with the source.
+  [Acknowledgement Statement]
+
   Previous Question Context: The interviewee has just talked about brain size and intelligence.
   Question: Overall, what's the importance of this right now? Why - this debate has been framed by some as beyond the pale, we shouldn't even discuss it. Do you think, first of all, that it is a distraction to discuss it, something that's really important for us to revisit?
   Response: 
   The journalist is encouraging the source to place these remarks in the context of a broader conversation of how it affects society.
   [Broadening Question]
+
+  Previous Question Context: The source is calling for a policy change in the South African government.
+  Question: We should explain in South Africa, many students do attend university and pay no tuition. Your argument is that there should be no tuition for any student. It should be entirely free.
+  Response:
+  The journalist is summarizing what the source is saying and giving additional context.
+  [Acknowledgement Statement]
 
   Previous Question Context: The interviewer has just started the interview, introduced the interviewee as a tour guide operator in Afghanistan, and discussed a recent attack.
   Question: We should first say the minibus that was recently attacked was not one of your tours. But you have led groups in Afghanistan, and I just have to ask why.
@@ -164,7 +182,7 @@ Respond in this way:
 '''
 
 # this prompt instructs LLM to classify the last question in the current interview transcript, given a question type taxonomy
-def get_classify_taxonomy_prompt(transcript_section, question):
+def get_classify_taxonomy_prompt(transcript, question):
       prompt = f'''
       I am trying to understand the kinds of questions asked by journalists. 
       I will show you the question the journalist asks. I will also show you the conversational history between the journalist (interviewer) and source (interviewee) for context.
@@ -173,21 +191,21 @@ def get_classify_taxonomy_prompt(transcript_section, question):
       Here are the schema categories:
 
       {DEFINITIONS}
-      
-      {FORMAT}
 
       Here are some examples (here, I show just the previous question context and the given question to save space):
 
-      {FEW_SHOT_EXAMPLES}
+      ```{FEW_SHOT_EXAMPLES}```
 
-      Now it's your turn.
-
-      Below is the interview transcript:
-      {transcript_section}
+      Ok, now it's your turn. Here is the interview transcript:
+      ```{transcript}```
 
       Here is the next question asked, which you will classify: 
       Question: {question}
-      Response:
+      Now it's your turn.
+
+      {FORMAT}
+
+      Please respond now:
       '''
       return prompt
 
@@ -220,33 +238,37 @@ def get_classify_all_questions_taxonomy_prompt(transcript, question):
       return prompt
 
 # this prompt instructs LLM to evaluate two different questions based on dimensions of similarity
-DIMENSION_OF_SIMILARITY_PROMPT = '''
-Dimensions of Similarity:
-    1. Informational: Do the questions target the same specific information or facts?
-    2. Motivational: Do the questions have the same motivation or underlying purpose?
-    3. Contextual: Are both questions equally appropriate for the specific context provided?
-    4. Stylistic: Do the questions have similar styles in terms of tone, complexity, and structure?
+def get_consistency_eval_prompt(transcript_context, LLM_question, human_question, LLM_question_type, Actual_question_type):
+      prompt = f'''
+      Dimensions of Similarity:
+      1. Informational: Do the questions target the same specific information or facts?
+      2. Motivational: Do the questions have the same motivation or underlying purpose?
+      3. Contextual: Are both questions equally appropriate for the specific context provided?
+      4. Stylistic: Do the questions have similar styles in terms of tone, complexity, and structure?
 
-    Given these dimensions of similarity as well as the following information below, please evaluate whether the two questions below are overall similar or not. They are either similar or they aren't. 
+      Given these dimensions of similarity as well as the following information below, please evaluate whether the two questions below are overall similar or not. They are either similar or they aren't. 
 
-    Transcript context: {transcript_context}
+      Transcript context: {transcript_context}
 
-    Question 1: {LLM_question}
-    Question 1 Type Classification: {LLM_question_type}
+      LLM Question: {LLM_question}
+      LLM Question Type Classification: {LLM_question_type}
 
-    Question 2: {human_question}
-    Question 2 Type Classification: {Actual_question_type}
+      Human Question: {human_question}
+      Human Question Type Classification: {Actual_question_type}
 
-    These two questions are two possible continuation questions an interviewer can ask given the current interview so far. In essence, your sole task is to determine whether the intent of these two possible questions are more similar or not different overall.
+      These two questions, one from a human and one from an LLM, are two possible continuation questions an interviewer can ask given the current interview so far. Your task is to determine whether the intent of these two possible questions are more similar or not different overall.
 
-    Please take things step by step. The format of your response should be in this sequence:
-    1. First, repeat the two questions, then explain your thought process comparing these questions across each dimension of similarity. 
-    2. Then, answer the following question: In the context of this interview, are the two questions provided more similar or different? 
-    Please format your final answer as either "similar" or "different" with brackets. 
-    If you think the similarity between the questions are high, please say "similar" instead.
-    If you think the similarity between the questions are low, please say "different" instead.
-    Your final answer can only be either of the following two: [similar] or [different], not both. 
-'''
+      Please take things step by step. The format of your response should be in this sequence:
+        1. First, explain your thought process and reasoning comparing these questions across each dimension of similarity. 
+        2. Next, guess how a human would reason about these two questions given the dimensions of similarity.
+        2. Then, answer the following question: In the context of this interview, are the two questions provided more similar or different? 
+        Please format your final answer as either "similar" or "different" with brackets. 
+          If you think the similarity between the questions are high, please say "similar" instead.
+          If you think the similarity between the questions are low, please say "different" instead.
+      Your final answer can only be either of the following two: [similar] or [different], not both. 
+      '''
+      return prompt
+      
 
 # this prompt is for generating additional context given the entire transcript
 CONTEXT_GENERATOR_PROMPT = '''
@@ -264,7 +286,10 @@ Your task is to predict the next question that will follow in an interview.
 Make sure that you are recognizing the interviewee's last comment and acknowledging it when appropriate, rather than immediately moving on and asking a question. When you do decide acknowledgment is necessary, make sure your response is personal and empathetic (sound like you care about what the interviewee has to say). This can simply be acknowledging what they said.
 
 The format of your response should be in this sequence:
-1. First, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this: [Guessed Question]. 
+1. First, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this. Here are some examples:
+  - Here is my guess for the next question: [Do you believe the current administration is handling the pandemic well?]
+  - Here is my guess for the next question: [Let's look forward to the vice presidential debate. This is happening Tuesday. Mike Pence, Tim Kaine will go head to head. We haven't heard a whole lot from either of them so far. Do you think they're just going to echo what their running mates have been saying?]
+  - Here is my guess for the next question: [Right. No. That makes sense. I see what you're talking about.]
 2. Then, explain the main motivation/intent behind the question that should be asked, then format your explanation with parentheses like this: (motivation explanation)
 
 Here is the interview so far:
@@ -287,7 +312,10 @@ Think about this step by step. For the following questions, write out your thoug
 The format of your response should be in this sequence:
 1. First, write out your thinking (in whatever format you want)
 2. Next, explain the main motivation/intent behind the question that should be asked, then format your explanation with parentheses like this: (motivation explanation)
-3. Lastly, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this: [Guessed Question]. 
+3. Lastly, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this. Here are some examples:
+    - Here is my guess for the next question: [Do you believe the current administration is handling the pandemic well?]
+    - Here is my guess for the next question: [Let's look forward to the vice presidential debate. This is happening Tuesday. Mike Pence, Tim Kaine will go head to head. We haven't heard a whole lot from either of them so far. Do you think they're just going to echo what their running mates have been saying?]
+    - Here is my guess for the next question: [Right. No. That makes sense. I see what you're talking about.]
 
 Here is the interview so far:
 {QA_Sequence}
@@ -301,7 +329,10 @@ Your task is to predict the next question that will follow in an interview. I wi
 Make sure that you are recognizing the interviewee's last comment and acknowledging it when appropriate, rather than immediately moving on and asking a question. When you do decide acknowledgment is necessary, make sure your response is personal and empathetic (sound like you care about what the interviewee has to say). This can simply be acknowledging what they said.
 
 The format of your response should be in this sequence:
-1. First, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this: [Guessed Question]. 
+1. First, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this. Here are some examples:
+    - Here is my guess for the next question: [Do you believe the current administration is handling the pandemic well?]
+    - Here is my guess for the next question: [Let's look forward to the vice presidential debate. This is happening Tuesday. Mike Pence, Tim Kaine will go head to head. We haven't heard a whole lot from either of them so far. Do you think they're just going to echo what their running mates have been saying?]
+    - Here is my guess for the next question: [Right. No. That makes sense. I see what you're talking about.]
 2. Then, explain the main motivation/intent behind the question that should be asked, then format your explanation with parentheses like this: (motivation explanation)
 
 Here is the relevant information:
@@ -332,7 +363,10 @@ Think about this step by step. For the following questions, write out your thoug
 The format of your response should be in this sequence:
 1. First, write out your thinking (in whatever format you want)
 2. Next, explain the main motivation/intent behind the question that should be asked, then format your explanation with parentheses like this: (motivation explanation)
-3. Lastly, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this: [Guessed Question]. 
+3. Lastly, guess the next question asked by the interviewer. Format your final guess for the question in brackets like this. Here are some examples:
+    - Here is my guess for the next question: [Do you believe the current administration is handling the pandemic well?]
+    - Here is my guess for the next question: [Let's look forward to the vice presidential debate. This is happening Tuesday. Mike Pence, Tim Kaine will go head to head. We haven't heard a whole lot from either of them so far. Do you think they're just going to echo what their running mates have been saying?]
+    - Here is my guess for the next question: [Right. No. That makes sense. I see what you're talking about.]
 
 Here is the relevant information:
 {outline_statement}
@@ -347,7 +381,6 @@ Here is the interview so far:
 
 Remember to format your motivation in parentheses (), and your guess for the next question asked in brackets [].
 '''
-
 
 if __name__ == "__main__": 
       transcript = "<transcript>"

@@ -1,34 +1,86 @@
 # prompt/instructions for the interviewee
-def get_source_prompt(QA_Sequence, response_type):
+def get_source_prompt(QA_Sequence, info_items, response_type = "honest"):
     prompt = f'''
-    You are a source. You have the following pieces of information but you are not just going to say it all at once, you have to be convinced to give the information. 
+    You are a source. You have the following pieces of information but you are not just going to say it all at once. Only answer properly if any of your information items match the journalist’s question:
+
+    Here are your information items:
+
+    {info_items}
     
     Here is the conversation so far:
 
     {QA_Sequence}
 
-    You're generally {response_type}. Choose whether you want to respond to the question, and then give your repsonse. Respond with {response_type}:
+    Decide if the last question the interviewer asked aligns with any of your information items. If so, respond and make sure you are {response_type}. 
+    If the question doesn't align with any of the information items you have, then say something like: "I'm not sure." of "I'll get back to you on that."
+
+    Now, reply to the question and wrap your answer in brackets. 
+    
+    Format: 
+        Can question be answered by informations I have?
+            if yes: 
+                The question asked by the interviewer can be answered by an information item I have. 
+                I will answer with information item <insert information item number>:
+                Here is my response to the question: 
+                [<response>]
+            if no:  
+                The question asked by the interviewer cannot be answered by an information items I have.
+                Here is my response to the question: 
+                [<response>]
+    
+    Here are some examples:
+        
+        Example 1:
+            The question asked by the interviewer can be answered by an information item I have. 
+            I will answer with information item 5:
+            Here is my response to the question: 
+            [Yeah, you know, it's hard to believe that we're talking about Texas as a wind power. 
+                But actually Texas ranks as the country's number-two supplier of electricity from wind. It is right behind California. 
+                It already has 16 wind farms operating around the state. There's another five or six on the drawing boards. 
+                They're going into service this year. And as we know how Texans like to do things in a big way, the wind turbines in Texas are also among the biggest in the country, some standing higher than the Statue of Liberty.]
+
+        Example 2:
+            The question asked by the interviewer cannot be answered by an information items I have. 
+            Here is my response to the question: 
+            [That's a good question, I'm not too sure about this matter.]
+
     '''
     return prompt
-    # plug in the info_items
+
     # for response type you might really need to define what each means
     # make sure the source profile isn't just 100% being evasive, or confused, that's not useful. We want to make sure it's realistic, even if that means we do some rule-based behaviors. maybe we want some set of frequency of specified behavior - eg. response_type = evasive --> 40% evasive, 60% straightforward.
     # i.e youre super anxious, you will only respond honestly after a lot of acknowledgment, etc.
 
 # prompt/instructions for interviewer
-def get_interviewer_outline_prompt(QA_Sequence, outline_objectives):
+def get_interviewer_prompt(QA_Sequence, outline_objectives, strategy = "straightforward"):
     prompt = f'''
     You are an interviewer. Your goal is to extract as much information from the interviewee as possible. 
     
-    Here is what you need to know:
+    Here is the outline of objectives you've prepared before the interview:
 
     {outline_objectives}
 
-    Here is your conversation so far:
+    Here is the conversation so far. (If you don't see a conversation, kick the interview off with a starting remark):
 
     {QA_Sequence}
 
-    Now, ask the next question.
+    Now, ask the next question (be {strategy}) and wrap it with brackets. Format: Here is my next question: [<your response>]
+    
+    Here are some examples:
+        Example 1:
+        
+        Here is my question: 
+        [
+            The Syrian government has denounced the weekend evacuation of some rescue workers from the U.S.-backed Syrian Civil Defense group. 
+            They're known as the White Helmets, and their mission is to save civilian lives during Syria's civil war. 
+            Those who were rescued, along with some of their family members, were transported from Syria to Jordan. Joining us now via Skype is Ibrahim Olabi. 
+            He's a human rights lawyer who's worked with the White Helmets. Good morning, Mr. Olabi.
+        ]
+
+        Example 2:
+
+        Here is my question: 
+        [And what are you hearing from the folks who've been evacuated?]
     '''
     return prompt
 
@@ -41,9 +93,14 @@ The format of your response should be in this sequence:
     - How did the interviewer probe for deeper insights or follow up on key points?
   2. Now putting this together, in brackets, create an outline that could have served as the interviewer's guide, with 4-6 broad themes or objectives that are directly relevant to the content of the transcript. Do not simply restate parts of the transcript; instead, synthesize the information into coherent, high-level themes that would shape the flow of the interview.
   3. In other words, place the entire outline you generate in brackets: 
-    ie. Here is the generated outline: 
+    ie. Here is the format of the generated outline: 
         [
-        <generated outline>
+            introductory blurb of the source
+
+            - Objective/Theme 1
+            - Objective/Theme 2
+            - Objective/Theme 3
+            ...
         ]
 '''
 
@@ -66,7 +123,7 @@ def get_outline_prompt(QA_Sequence):
     return prompt
 
 # prompt that summarizes the interview transcript into key information items that the source has
-def get_extraction_prompt(QA_Sequence):
+def get_info_items_prompt(QA_Sequence):
     prompt = f"""
     You are tasked with extracting key pieces of information from an interview transcript. 
     

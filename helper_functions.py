@@ -156,9 +156,8 @@ def extract_text_inside_parentheses(text):
         return match.group(1)
     return "Error"
 
-def stitch_csv_files(output_dir="output_results", final_output_file="LLM_classified_results_final.csv"):
+def stitch_csv_files(output_dir="output_results", final_output_file="all_results_concatenated.csv"):
     all_files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.csv')]
-    all_files.sort()  # Sort files by name to ensure they are concatenated in the correct order
     
     all_dfs = []
     for file in all_files:

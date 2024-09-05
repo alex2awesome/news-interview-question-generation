@@ -1,10 +1,12 @@
 import os
 import sys
+import re
 import pandas as pd
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
+import gc
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets
+from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files
 from game_sim.game_sim_prompts import get_source_prompt, get_interviewer_prompt
 
 # ---- single use ---- #
@@ -72,22 +74,38 @@ def generate_vllm_SOURCE_response_batch(prompts, model, tokenizer):
     ]
     return vllm_infer_batch(messages_batch, model, tokenizer)
 
-def conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=100, output_dir="output_results/game_sim/conducted_interviews"):
+# regex to match "Information Item {integer}" and extract the integer
+def extract_information_item_numbers(response):
+    return [int(num) for num in re.findall(r'(?i)information item #?(\d+)', response)]
+
+# Regular expression to match "Information item #{integer}"
+def count_information_items(info_items_text):
+    return len(re.findall(r'(?i)information item #?\d+', info_items_text))
+
+def conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=3, output_dir="output_results/game_sim/conducted_interviews"):
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
 
-    num_samples = len(df) # if 5 rows, num_samples = 5
-    final_conversations = [""] * num_samples # this list is to store the final conversation
-    
+    num_samples = len(df)  # Number of rows in the dataframe
+    unique_info_item_counts = [0] * num_samples  # Store unique information item counts per sample
+    total_info_item_counts = [0] * num_samples  # Store total number of information items per sample
+
+    # Create the output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
-        
+
         batch_df = df.iloc[start_idx:end_idx]
         info_items = batch_df['info_items']
         outlines = batch_df['outlines']
-        
+
         current_conversations = [""] * (end_idx - start_idx)
-        
+        unique_info_items_sets = [set() for _ in range(end_idx - start_idx)]
+
+        # Count the total number of information items for each row in the batch
+        total_info_item_counts[start_idx:end_idx] = [count_information_items(info_item) for info_item in info_items]
+
         for turn in range(num_turns):
             # First, interviewer asks the question
             interviewer_prompts = [
@@ -96,6 +114,7 @@ def conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-
             ]
             interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, model, tokenizer)
             interviewer_questions = [extract_text_inside_brackets(response) for response in interviewer_responses]
+            gc.collect()
 
             # Update current conversations with the interviewer questions
             current_conversations = [
@@ -109,6 +128,10 @@ def conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-
                 for current_conversation, info_item in zip(current_conversations, info_items)
             ]
             interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
+            for idx, response in enumerate(interviewee_responses):
+                info_item_numbers = extract_information_item_numbers(response)
+                unique_info_items_sets[idx].update(info_item_numbers)
+            gc.collect()
 
             # Update current conversations with the interviewee responses
             current_conversations = [
@@ -116,34 +139,41 @@ def conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-
                 for ch, response in zip(current_conversations, interviewee_responses)
             ]
 
-        final_conversations[start_idx:end_idx] = current_conversations
+        # After all turns, count the unique information items mentioned
+        unique_info_item_counts[start_idx:end_idx] = [len(info_set) for info_set in unique_info_items_sets]
 
-    new_df = pd.DataFrame({
-        'id': df['id'],
-        'combined_dialogue': df['combined_dialogue'],
-        'info_items': df['info_items'],
-        'outlines': df['outlines'],
-        'final_conversations': final_conversations
-    })
-    
-    os.makedirs(output_dir, exist_ok=True)
-    output_file_path = os.path.join(output_dir, "conducted_interviews.csv")
-    new_df.to_csv(output_file_path, index=False)
-    print(f"CSV file saved to {output_file_path}")
-    return new_df
+        # Create a DataFrame for the current batch
+        batch_output_df = pd.DataFrame({
+            'id': batch_df['id'],
+            'combined_dialogue': batch_df['combined_dialogue'],
+            'info_items': batch_df['info_items'],
+            'outlines': batch_df['outlines'],
+            'final_conversations': current_conversations,
+            'total_info_items_extracted': unique_info_item_counts[start_idx:end_idx],  # unique info items extracted by interviewer
+            'total_info_item_count': total_info_item_counts[start_idx:end_idx]  # total info items the source has
+        })
+
+        # Save the batch to a CSV file with a unique name
+        batch_file_name = f"conducted_interviews_batch_{start_idx}_{end_idx}.csv"
+        batch_file_path = os.path.join(output_dir, batch_file_name)
+        batch_output_df.to_csv(batch_file_path, index=False)
+        print(f"Batch {start_idx} to {end_idx} saved to {batch_file_path}")
+
+    final_df = stitch_csv_files(output_dir, 'all_conducted_interviews.csv')
+    return final_df
 
 if __name__ == "__main__": 
     data_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/outlines/final_df_with_outlines.csv"
     df = pd.read_csv(data_path)
-    df = df.head(3)
+    df = df.head(9)
     print(df) # df has columns info_items and outlines
     
     num_turns = 5
     simulated_interviews = conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
     print(f"dataset with simulated interviews: {simulated_interviews}\n")
     
-    for i, interview in enumerate(simulated_interviews['final_conversations']):
-         print(f"Interview {i+1}:\n {interview}\n\n\n")
+    # for i, interview in enumerate(simulated_interviews['final_conversations']):
+    #      print(f"Interview {i+1}:\n {interview}\n\n\n")
     
     '''
 
@@ -153,3 +183,5 @@ if __name__ == "__main__":
 
     'id' | 'combined_dialogue' | 'info_items' | 'outlines' | 'final_conversations'
     '''
+    # response = "Information Item #12, information Item 324567, information iTem #696969"
+    # print(extract_information_item_numbers(response))

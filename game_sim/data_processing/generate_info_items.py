@@ -1,11 +1,13 @@
+# generate_info_items.py
+
 import os
 import sys
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer
-from game_sim_prompts import get_info_items_prompt
+from helper_functions import load_vllm_model, initialize_tokenizer, stitch_csv_files
+from game_sim_prompts import get_info_items_prompt, get_segmented_info_items_prompt
 
 # ---- single use ---- #
 def vllm_infer(messages, model, tokenizer):
@@ -60,17 +62,93 @@ def extract_information_items_batch(transcripts, model, tokenizer, batch_size=10
     return information_items
 
 # ----------- #
-def process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", output_dir="output_results/game_sim/info_items"):
+def process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", output_dir="output_results/game_sim/info_items", batch_size=100):
+    os.makedirs(output_dir, exist_ok=True)
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
 
-    df['info_items'] = extract_information_items_batch(df['combined_dialogue'], model, tokenizer)
-    
+    for start_idx in range(0, len(df), batch_size):
+        batch = df.iloc[start_idx:start_idx+batch_size]
+        transcripts = batch['combined_dialogue']
+
+        prompts = [get_info_items_prompt(transcript) for transcript in transcripts]
+        batch_responses = generate_vllm_info_items_batch(prompts, model, tokenizer)
+        
+        batch['info_items'] = batch_responses
+
+        batch_file_name = f"batch_{start_idx}_to_{min(start_idx + batch_size, len(df))}_info_item.csv"
+        batch_file_path = os.path.join(output_dir, batch_file_name)
+        batch.to_csv(batch_file_path, index=False)
+
+    final_df = stitch_csv_files(output_dir, 'final_df_with_info_items.csv')
+    return final_df
+
+def process_info_items(info_items_str):
+    items = info_items_str.split('\n')
+    info_dict = {}
+    for item in items:
+        item = item.strip()
+        if item.startswith('Information item #'):
+            key, value = item.split(':', 1)
+            info_dict[key.strip()] = value.strip()
+    return info_dict
+
+def extract_segments(response):
+    segments = []
+    current_segment = ""
+    for line in response.split('\n'):
+        line = line.strip()
+        if line.startswith('**Segment'):
+            if current_segment:
+                segments.append(current_segment.strip())
+            current_segment = ""
+        elif line and not line.startswith('Here are') and not line.startswith('**'):
+            current_segment += line + " "
+    if current_segment:
+        segments.append(current_segment.strip())
+    return segments
+
+def process_segmented_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", output_dir="output_results/game_sim/segmented_info_items", batch_size=100):
     os.makedirs(output_dir, exist_ok=True)
-    output_file_path = os.path.join(output_dir, "final_df_with_info_items.csv")
-    df.to_csv(output_file_path, index=False)
-    print(f"csv file saved to {output_file_path}")
-    return df
+    model = load_vllm_model(model_name)
+    tokenizer = initialize_tokenizer(model_name)
+
+    all_results = []
+
+    for start_idx in range(0, len(df), batch_size):
+        batch = df.iloc[start_idx:start_idx+batch_size].copy()
+        
+        # Process info items for the batch
+        batch['info_items_dict'] = batch['info_items'].apply(process_info_items)
+        
+        all_prompts = []
+        for idx, row in batch.iterrows():
+            for item_key, item_value in row['info_items_dict'].items():
+                prompt = get_segmented_info_items_prompt(row['combined_dialogue'], f"{item_key}: {item_value}")
+                all_prompts.append((idx, item_key, prompt))
+        
+        # Generate segments using LLM
+        prompts = [p[2] for p in all_prompts]
+        batch_responses = generate_vllm_info_items_batch(prompts, model, tokenizer)
+        
+        # Process responses
+        for (idx, item_key, _), response in zip(all_prompts, batch_responses):
+            segments = extract_segments(response)
+            if 'segmented_info_items' not in batch.columns:
+                batch['segmented_info_items'] = [{}] * len(batch)
+            batch.at[idx, 'segmented_info_items'] = batch.at[idx, 'segmented_info_items'].copy()
+            batch.at[idx, 'segmented_info_items'][item_key] = segments
+
+        all_results.append(batch)
+
+        # Save batch results
+        batch_file_name = f"batch_{start_idx}_to_{min(start_idx + batch_size, len(df))}_segmented_info_items.csv"
+        batch_file_path = os.path.join(output_dir, batch_file_name)
+        batch.to_csv(batch_file_path, index=False)
+
+    final_df = pd.concat(all_results, ignore_index=True)
+    final_df.to_csv(os.path.join(output_dir, 'final_df_with_segmented_info_items.csv'), index=False)
+    return final_df
 
 if __name__ == "__main__": 
     # final_dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/final_dataset.csv"
@@ -80,13 +158,11 @@ if __name__ == "__main__":
 
     # df_with_info_items = process_info_items(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
     # print(df_with_info_items)
+# ____
+    test_file = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/outlines/final_df_with_outlines.csv"
+    df = pd.read_csv(test_file)
+    print(df)
 
-    test_file = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/info_items/final_df_with_info_items.csv"
-    test_df = pd.read_csv(test_file)
-    
-    print(f"interview: {test_df['combined_dialogue'].iloc[2]}")
-    print(f"info items: {test_df['info_items'].iloc[2]}")
-    print(test_df["id"].iloc[2])
-
-    # checked that it works with the 8B model? y/n: y 
-    # (validated by michael)
+    df_with_segmented_info_items = process_segmented_info_items(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    print(df_with_segmented_info_items)
+    print(df_with_segmented_info_items['segmented_info_items'].iloc[0])

@@ -147,7 +147,7 @@ def extract_text_inside_brackets(text):
     match = re.search(r'\[(.*?)\]', text, re.DOTALL)
     if match:
         return match.group(1)
-    return "No label(s) in brackets"
+    return ""
 
 # given "ABC{XYZ}EFG", return "XYZ"
 def extract_text_inside_parentheses(text):

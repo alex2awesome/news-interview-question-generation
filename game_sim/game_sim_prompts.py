@@ -312,6 +312,14 @@ def get_info_items_prompt(QA_Sequence):
     """
     return prompt
 
+#^ for the formatting above, try this if wanna optimize:
+#     Information item #1:
+#     Information item #2:
+#     Information item #3:
+#     .
+#     .
+#     .
+
 def get_segmented_info_items_prompt(QA_Sequence, info_item):
     prompt = f'''
     

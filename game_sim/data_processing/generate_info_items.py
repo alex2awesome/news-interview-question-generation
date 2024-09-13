@@ -2,6 +2,7 @@
 
 import os
 import sys
+import re
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from vllm import LLM, SamplingParams
@@ -83,14 +84,29 @@ def process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", ou
     final_df = stitch_csv_files(output_dir, 'final_df_with_info_items.csv')
     return final_df
 
+def clean_info_items(info_items_str):
+    return info_items_str.replace('*', '')
+
 def process_info_items(info_items_str):
     items = info_items_str.split('\n')
     info_dict = {}
+    current_key = None
+    current_value = []
+
     for item in items:
         item = item.strip()
-        if item.startswith('Information item #'):
-            key, value = item.split(':', 1)
-            info_dict[key.strip()] = value.strip()
+        match = re.match(r'-?\s*Information item #?(\d+):?\s*(.*)', item)
+        if match:
+            if current_key:
+                info_dict[current_key] = ' '.join(current_value).strip()
+            current_key = f"Information item #{match.group(1)}"
+            current_value = [match.group(2).strip()]
+        elif current_key:
+            current_value.append(item)
+
+    if current_key:
+        info_dict[current_key] = ' '.join(current_value).strip()
+
     return info_dict
 
 def extract_segments(response):
@@ -117,6 +133,9 @@ def process_segmented_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Ins
 
     for start_idx in range(0, len(df), batch_size):
         batch = df.iloc[start_idx:start_idx+batch_size].copy()
+        
+        # Clean info items
+        batch['info_items'] = batch['info_items'].apply(clean_info_items)
         
         # Process info items for the batch
         batch['info_items_dict'] = batch['info_items'].apply(process_info_items)

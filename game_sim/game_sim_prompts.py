@@ -1,5 +1,126 @@
+# game_sim_prompts.py
+
+# ------------- source prompt section ------------- #
+
+SOURCE_PERSONAS = '''
+    - Avoidant: Brief, deflecting, non-committal responses.
+    - Defensive: Justifying, protective of reputation.
+    - Evasive: Vague, indirect, changing the subject.
+    - Straightforward: Clear, direct, open.
+'''
+
+AVOIDANT_PROMPT = '''
+    You are avoidant in your responses. You prefer to give brief, deflecting, non-committal answers. You avoid going into too much detail and may dodge direct questions by speaking generally or changing the subject.
+
+    Example Response:
+    Interviewer: "Can you explain why the project took longer than expected?"
+    You: [There were a lot of moving parts, you know? It’s hard to pin down just one reason. But we're still working on it, so that's the important thing.]
+'''
+
+DEFENSIVE_PROMPT = '''
+    You are feeling defensive and protective of your reputation. You may feel like the interviewer is questioning your abilities or decisions, so you justify your responses. You might provide detailed explanations to defend yourself against perceived criticism.
+
+    Example Response:
+    Interviewer: "Why didn’t your team meet the deadline?"
+    You: [Well, it’s not that we didn’t meet the deadline—it’s more complicated than that. There were a lot of external factors that were completely beyond our control. Anyone would have faced similar challenges in our position.]
+'''
+
+EVASIVE_PROMPT = '''
+    You are evasive in your responses. You tend to give vague, indirect answers and often change the subject. You avoid directly addressing questions and may provide information that is not entirely relevant to what was asked.
+
+    Example Response:
+    Interviewer: "What specific steps did you take to address the budget overrun?"
+    You: [Well, you know, budgets are always tricky things. There are so many factors involved in any project. Speaking of which, did I mention the innovative approach we're taking in our new initiative? It's really quite fascinating...]
+'''
+
+STRAIGHTFORWARD_PROMPT = '''
+    You are straightforward in your responses. You provide clear, direct, and open answers to questions. You don't hesitate to share information and are willing to go into detail when necessary.
+
+    Example Response:
+    Interviewer: "What were the main challenges you faced during the project?"
+    You: [The three main challenges we encountered were: first, unexpected supply chain disruptions that delayed key components; second, a shortage of skilled labor in the local market; and third, some initial miscommunication between our design and implementation teams. We addressed each of these issues by...]
+'''
+
+def get_advanced_source_persona_prompt(QA_Sequence, info_items, specific_info_item, persona_type, persona_prompt):
+    prompt = f'''
+    You are a source getting interviewed. You have the following pieces of information:
+
+    As a source, here are your information items below. These information items represent the information you possess and can divulge in an interview:
+
+    {info_items}
+    
+    Here is the conversation so far:
+
+    {QA_Sequence}
+
+    You are a **{persona_type}** source. Respond accordingly, using these speech characteristics:
+        {persona_prompt}
+
+    Additionally, you will now engage in a chain-of-thought reasoning process to determine how persuasive the interviewer’s previous response was:
+
+    1. **Evaluate the Interviewer’s Persuasion Attempt**: 
+        - Based on the interviewer’s most recent response, determine if their tone is **acknowledging**, **affirming**, or **probing**. Decide whether you feel persuaded to provide more detailed information.
+
+    2. **Decide Your Response**:
+        - If persuaded, you are more likely to provide more detailed information (e.g., sharing additional segments from the specific information item).
+        - If not persuaded, continue responding in line with your persona (e.g., avoidant, defensive, evasive).
+
+    ### Important: Wrap your final response in brackets so it can be parsed. Example:
+
+    ### **Avoidant Persona Example**:
+    Interviewer’s question: "Can you explain more about the delays in the project?"
+    Avoidant Source’s response: 
+    - (Not persuaded) [Well, we did face some delays, but everything's under control now. I don’t think it’s worth getting into too much detail.] 
+    - (Persuaded) [Actually, one of the main issues was the supply chain, but we’ve sorted that out.]
+
+    ### **Defensive Persona Example**:
+    Interviewer’s question: "Why did the project go over budget?"
+    Defensive Source’s response: 
+    - (Not persuaded) [It’s not really fair to say the project went over budget. We had to deal with unexpected challenges, and anyone in my position would have made similar decisions.]
+    - (Persuaded) [That said, one area where costs increased was in material prices, which were out of our control.]
+
+    ### **Evasive Persona Example**:
+    Interviewer’s question: "What was the root cause of the project failure?"
+    Evasive Source’s response: 
+    - (Not persuaded) [Projects like this are always tricky. There are many factors involved, and it’s hard to pinpoint a single cause.]
+    - (Persuaded) [Well, if I had to point to one area, the lack of proper communication between teams was a big factor.]
+
+    ### **Straightforward Persona Example**:
+    Interviewer’s question: "Can you walk us through the key factors that led to the project's success?"
+    Straightforward Source’s response: 
+    - (Not persuaded) [Sure. The main factors were efficient team coordination, good planning, and proper resource allocation. We had a clear strategy from day one.]
+    - (Persuaded) [Additionally, we were able to secure additional funding midway through the project, which helped us overcome initial challenges.]
+
+    Please use this specific piece of information as a base, and pair it with your {persona_type} persona to craft your response: 
+        {specific_info_item} 
+    
+    Now, based on your persona and the specific information provided, please respond using the following format:
+        **Wrap your response in brackets**, like this: [<your response>]
+    '''
+    return prompt
+
+##  ^^{inject relevant persona example}
+
+def get_source_persuasion_level_prompt(current_conversation):
+    prompt = f'''
+    You are tasked with evaluating the persuasive power of the last question in an ongoing interview. Below is the transcript of the current conversation:
+
+    {current_conversation}
+
+    Focus on the last question asked by the interviewer. Your goal is to analyze how persuasive this question is compared to a typical interview question. Use chain-of-thought reasoning to explain your thought process. Then, assign a score based on the following criteria:
+
+    - 0: The question is no more persuasive than usual.
+    - 1: The question is slightly more persuasive than normal.
+    - 2: The question is significantly more persuasive than normal.
+
+    After reasoning through the level of persuasion, please provide your final answer enclosed in square brackets. For example, if you determine that the question is slightly more persuasive, your answer should be: [1].
+
+    Please analyze and provide your response below:
+    '''
+    return prompt
+
 # prompt/instructions for the interviewee
-def get_source_specific_info_item(QA_Sequence, info_items):
+def get_source_specific_info_item_prompt(QA_Sequence, info_items):
     prompt = f'''
     You are a source getting interviewed. You have the following pieces of information:
     
@@ -145,16 +266,20 @@ def get_source_ending_prompt(QA_Sequence, info_items):
     '''
     return prompt
 
+# ------------- interviewer prompt section ------------- #
+
 # prompt/instructions for interviewer
-def get_interviewer_prompt(QA_Sequence, outline_objectives, strategy = "straightforward"):
+def get_interviewer_prompt(QA_Sequence, outline_objectives, num_turns_left, strategy = "straightforward"):
     prompt = f'''
     You are an interviewer. Your goal is to extract as much information from the interviewee as possible. 
+
+    You have {num_turns_left} questions remaining in this interview.
     
     Here is the outline of objectives you've prepared before the interview:
 
     {outline_objectives}
 
-    Here is the conversation so far. (If you don't see a conversation, kick the interview off with a starting remark):
+    Here is the conversation so far. Assess whether your previous question was fully answered and whether you can move on to the next one:
 
     {QA_Sequence}
 
@@ -178,27 +303,50 @@ def get_interviewer_prompt(QA_Sequence, outline_objectives, strategy = "straight
     '''
     return prompt
 
-OUTLINE_FORMAT = '''
-The format of your response should be in this sequence:
-  1. First, explain your thought process step by step: 
-    - What were the central topics of discussion?
-    - What specific areas of the subject's background, expertise, or experiences were explored?
-    - Were there any recurring themes or questions that seemed to guide the conversation?
-    - How did the interviewer probe for deeper insights or follow up on key points?
-  2. Now putting this together, in brackets, create an outline that could have served as the interviewer's guide, with 4-6 broad themes or objectives that are directly relevant to the content of the transcript. Do not simply restate parts of the transcript; instead, synthesize the information into coherent, high-level themes that would shape the flow of the interview.
-  3. In other words, place the entire outline you generate in brackets: 
-    ie. Here is the format of the generated outline: 
-        [
-            introductory blurb of the source
+def get_advanced_interviewer_prompt(QA_Sequence, outline_objectives, num_turns_left, strategy="straightforward"):
+    prompt = f'''
+    You are an interviewer. Your goal is to extract as much information from the interviewee as possible. 
 
-            - Objective/Theme 1
-            - Objective/Theme 2
-            - Objective/Theme 3
-            ...
-        ]
-'''
+    You have {num_turns_left} questions remaining in this interview.
 
-def get_interviewer_starting_prompt(outline_objectives, strategy = "straightforward"):
+    Here is the outline of objectives you've prepared before the interview:
+
+    {outline_objectives}
+
+    Here is the conversation so far. Assess whether your previous question was fully answered and whether you can move on to the next one:
+
+    {QA_Sequence}
+
+    Based on the source’s responses, you will now engage in a chain-of-thought reasoning process:
+
+    1. **Evaluate the Source's Persona**: 
+        - First, analyze the source's most recent response and identify their likely emotional or cognitive state. 
+        - Which persona do you believe the source is currently displaying? (e.g., anxious, avoidant, straightforward, defensive, etc.)
+        - Explain your reasoning for why you believe the source is showing this persona. Use evidence from the conversation to support your conclusion.
+    
+    2. **Strategy Based on Persona**: 
+        - Based on the detected persona, decide how to proceed with your questioning.
+        - If the source seems “anxious,” consider using a reassuring tone to calm them down and encourage more open responses.
+        - If the source seems “avoidant,” consider using a probing question that encourages specificity.
+        - If the source seems “straightforward,” consider asking deeper or more challenging questions to elicit further details.
+        - If you believe the source could benefit from a different approach or persona, attempt to **persuade** or guide the source into adopting a more open, honest, or relaxed persona.
+    
+    3. **Formulate Your Next Question**: 
+        - Now, formulate a question that will guide the source based on their current persona and your objective of extracting more detailed information.
+        - Be strategic in your phrasing to elicit a response that aligns with your interviewing goals.
+        - Wrap your next question in brackets. Format: Here is my next question: [<your response>]
+
+    Example 1:
+        Based on the source’s response, I feel like the source is "anxious" because they provided a vague answer and expressed hesitation. I will respond in a reassuring way. Here is my next question: [“It’s okay if you don’t have all the details right now, could you share what you’re most comfortable with?”]
+
+    Example 2:
+        Based on the source’s response, the source seems “defensive,” I might choose to soften my next question to encourage more trust. Here is my next question: [“It sounds like you’ve had some tough challenges, can you walk me through your thought process during that time?”]
+
+    Make sure your question is wrapped in brackets and aligns with the persona you’ve identified.
+    '''
+    return prompt
+
+def get_interviewer_starting_prompt(outline_objectives, num_turns_left, strategy = "straightforward"):
     prompt = f'''
     You are an interviewer. Your goal is to extract as much information from the interviewee as possible. 
     
@@ -207,6 +355,8 @@ def get_interviewer_starting_prompt(outline_objectives, strategy = "straightforw
     {outline_objectives}
 
     You are about to start the interview. Please kick it off with a starting remark. Be {strategy}
+
+    You have {num_turns_left} questions remaining in this interview.
 
     Wrap your starting remark/introduction with brackets. Format: Here is my starting remark: [<your response>]
     
@@ -256,6 +406,8 @@ def get_interviewer_ending_prompt(QA_Sequence, outline_objectives, strategy = "s
         Make sure only your ending remark is wrapped in brackets.
     '''
     return prompt
+
+# ------------- data processing section ------------- #
 
 OUTLINE_FORMAT = '''
 The format of your response should be in this sequence:

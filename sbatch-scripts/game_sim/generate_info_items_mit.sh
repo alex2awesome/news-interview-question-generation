@@ -1,11 +1,11 @@
 #!/bin/bash
+
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --time=40:00:00
-#SBATCH --gres=gpu:a100:2
-#SBATCH --constraint=a100-80gb
-#SBATCH --cpus-per-gpu=100
-#SBATCH --mem=200G
+#SBATCH --time=20:00:00
+#SBATCH --gres=gpu:2
+#SBATCH --cpus-per-task=100
+#SBATCH --mem=400G
 #SBATCH --partition=sched_mit_psfc_gpu_r8
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=michael.lu@berkeley.edu

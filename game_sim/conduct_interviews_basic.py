@@ -76,7 +76,7 @@ def extract_information_item_numbers(response):
 def count_information_items(info_items_text):
     return len(re.findall(r'(?i)information item #?\d+', info_items_text))
 
-def conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=3, output_dir="output_results/game_sim/conducted_interviews_basic"):
+def conduct_basic_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=3, output_dir="output_results/game_sim/conducted_interviews_basic"):
     os.makedirs(output_dir, exist_ok=True)
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     print(df)
 
     num_turns = 8
-    simulated_interviews = conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    simulated_interviews = conduct_basic_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
     print(simulated_interviews)
     
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")

@@ -77,17 +77,12 @@ def process_outlines(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", outp
     return df
 
 if __name__ == "__main__": 
-    # dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/info_items/final_df_with_info_items.csv"
-    # df = pd.read_csv(dataset_path)
-    # print(df)
+    dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/segmented_info_items/final_df_with_segmented_info_items.csv"
+    df = pd.read_csv(dataset_path)
+    print(df)
 
-    # df_with_outlines = process_outlines(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
-    # print(df_with_outlines)
-
-    info_item_dataset_file = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/segmented_info_items/final_df_with_segmented_info_items.csv"
-    test_df = pd.read_csv(info_item_dataset_file)
-    print(test_df["outlines"].iloc[2])
-    print(test_df["id"].iloc[2])
+    df_with_outlines = process_outlines(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    print(df_with_outlines)
 
     # checked that it works with the 8B model? y/n: y 
     # (validated by michael)

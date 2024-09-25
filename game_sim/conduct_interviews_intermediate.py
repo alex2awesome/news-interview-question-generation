@@ -244,7 +244,7 @@ if __name__ == "__main__":
     print(df)
 
     num_turns = 8
-    simulated_interviews = conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    simulated_interviews = conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
     print(simulated_interviews)
     
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")

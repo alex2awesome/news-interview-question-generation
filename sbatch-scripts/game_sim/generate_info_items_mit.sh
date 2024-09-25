@@ -16,8 +16,4 @@ source env_setup.sh
 
 export OMP_NUM_THREADS=50
 
-python -m game_sim.data_processing.generate_info_items
-python -m game_sim.data_processing.generate_segmented_info_items
-python -m game_sim.data_processing.generate_outlines
-python -m game_sim.conduct_interviews_basic
-python -m game_sim.conduct_interviews_intermediate
+python -m game_sim.data_processing.run_all

@@ -87,8 +87,8 @@ def process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", ou
 if __name__ == "__main__": 
     final_dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/final_dataset.csv"
     df = pd.read_csv(final_dataset_path)
-    df = df.head(150)
+    df = df.head(10)
     print(df)
 
-    df_with_info_items = process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    df_with_info_items = process_info_items(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
     print(df_with_info_items)

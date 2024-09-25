@@ -12,7 +12,7 @@ import gc
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files
-from game_sim_prompts import get_source_prompt_intermediate, get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_item, get_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
+from game_sim.game_sim_prompts import get_source_prompt_intermediate, get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_item_prompt, get_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
 
 # ---- batch use ---- #
 def vllm_infer_batch(messages_batch, model, tokenizer):
@@ -153,7 +153,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
             ]
 
             specific_info_item_prompts = [
-                get_source_specific_info_item(current_conversation, info_item_list)
+                get_source_specific_info_item_prompt(current_conversation, info_item_list)
                 for current_conversation, info_item_list in zip(current_conversations, info_items)
             ]
             interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, model, tokenizer)

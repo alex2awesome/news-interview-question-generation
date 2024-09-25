@@ -16,4 +16,4 @@ source env_setup.sh
 
 export OMP_NUM_THREADS=50
 
-python -m game_sim.data_processing.run_all
+python -m game_sim.data_processing.run_all_mit

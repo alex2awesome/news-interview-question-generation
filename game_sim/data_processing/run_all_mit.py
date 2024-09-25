@@ -6,9 +6,9 @@ import re
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from dataprocessing.generate_info_items import process_info_items
-from dataprocessing.generate_segmented_info_items import process_segmented_info_items
-from dataprocessing.generate_outlines import process_outlines
+from data_processing.generate_info_items import process_info_items
+from data_processing.generate_segmented_info_items import process_segmented_info_items
+from data_processing.generate_outlines import process_outlines
 from conduct_interviews_basic import conduct_basic_interviews_batch
 from conduct_interviews_intermediate import conduct_intermediate_interviews_batch
 

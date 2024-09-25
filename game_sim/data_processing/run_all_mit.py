@@ -19,21 +19,21 @@ if __name__ == "__main__":
     df = df.head(200)
     print(df)
 
-    df_with_info_items = process_info_items(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    df_with_info_items = process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
     print(df_with_info_items)
 
     # generate_segmented_info_items
     df = pd.read_csv(df_with_info_items)
     print(df)
 
-    df_with_segmented_info_items = process_segmented_info_items(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    df_with_segmented_info_items = process_segmented_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
     print(df_with_segmented_info_items)
 
     # generate_outlines
     df = pd.read_csv(df_with_segmented_info_items)
     print(df)
 
-    df_with_outlines = process_outlines(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    df_with_outlines = process_outlines(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
     print(df_with_outlines)
 
     # basic setup
@@ -41,12 +41,12 @@ if __name__ == "__main__":
     print(df)
 
     num_turns = 8
-    simulated_interviews = conduct_basic_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    simulated_interviews = conduct_basic_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
     print(simulated_interviews)
 
     # intermediate setup
     df = pd.read_csv(df_with_outlines)
     print(df)
 
-    simulated_interviews = conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    simulated_interviews = conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
     print(simulated_interviews)

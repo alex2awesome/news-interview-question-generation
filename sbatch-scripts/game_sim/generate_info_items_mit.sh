@@ -10,7 +10,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=michael.lu@berkeley.edu
 
-cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
+cd /pool001/spangher/alex/news-interview-question-generation
 
 source env_setup.sh
 

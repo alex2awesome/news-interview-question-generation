@@ -2,7 +2,7 @@
 
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --time=20:00:00
+#SBATCH --time=8:00:00
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=100
 #SBATCH --mem=400G

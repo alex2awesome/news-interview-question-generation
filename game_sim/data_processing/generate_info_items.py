@@ -75,7 +75,7 @@ def process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", ou
         prompts = [get_info_items_prompt(transcript) for transcript in transcripts]
         batch_responses = generate_vllm_info_items_batch(prompts, model, tokenizer)
         
-        batch['info_items'] = batch_responses
+        batch.loc[:, 'info_items'] = batch_responses
 
         batch_file_name = f"batch_{start_idx}_to_{min(start_idx + batch_size, len(df))}_info_item.csv"
         batch_file_path = os.path.join(output_dir, batch_file_name)

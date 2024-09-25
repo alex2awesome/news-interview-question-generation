@@ -8,7 +8,7 @@ import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, stitch_csv_files
-from game_sim_prompts import get_info_items_prompt, get_segmented_info_items_prompt
+from game_sim_prompts import get_info_items_prompt
 
 # ---- single use ---- #
 def vllm_infer(messages, model, tokenizer):

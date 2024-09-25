@@ -50,7 +50,7 @@ def count_information_items(info_items_text):
     return len(re.findall(r'(?i)information item #?\d+', info_items_text))
 
 # selects random segments from a given information item, returning the formatted segments and an updated used_segments_dict.
-def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, max_proportion=1.0):
+def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, max_proportion=1.0, persuasion_level=1, persona='avoidant'):
     try:
         segmented_info_items = ast.literal_eval(segmented_info_items_str)
     except:
@@ -85,23 +85,7 @@ def get_random_segments(segmented_info_items_str, chosen_info_item, used_segment
 
     formatted_segments = "\n".join(f"- {segment}" for segment in selected_segments)
 
-    proportion_of_total = num_segments_to_return / total_segments
-    if proportion_of_total <= 0.10:
-        persona = "Avoidant"
-    elif proportion_of_total <= 0.25:
-        persona = "Defensive"
-    elif proportion_of_total <= 0.45:
-        persona = "Evasive"
-    else:
-        persona = "Straightforward"
-
-    return formatted_segments, used_segments_dict, persona
-
-# alex todo
-def get_non_uniform_sampling(persona_type, persuasion_state, max_segments):
-    # This is a placeholder for the function your advisor will help write
-    # It should return the number of segments to sample based on persona and persuasion state
-    pass
+    return formatted_segments, used_segments_dict
 
 # parameters of the beta distribution 
 PERSONA_DICT = {
@@ -143,6 +127,8 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
         "Straightforward": STRAIGHTFORWARD_PROMPT
     }
 
+    persona_types = ["Avoidant", "Defensive", "Evasive", "Straightforward"]
+
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
         batch_df = df.iloc[start_idx:end_idx]
@@ -155,6 +141,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
         total_segments_counts = []
         extracted_segments_sets = [set() for _ in range(end_idx - start_idx)]
         used_segments_dicts = [{} for _ in range(end_idx - start_idx)]
+        personas = [random.choice(persona_types) for _ in range(end_idx - start_idx)]
         
         for segmented_items in batch_df['segmented_info_items']:
             segmented_dict = ast.literal_eval(segmented_items)
@@ -229,15 +216,16 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
                 extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No"
                 for response in interviewee_persuasion_level_responses
             ]
-
+            
+            # ask source for response, given specific info segments 
             random_segments = []
-            for idx, (specific_item, segmented_items) in enumerate(zip(specific_info_items, batch_df['segmented_info_items'])):
+            for idx, (specific_item, segmented_items, persuasion_level, persona) in enumerate(zip(specific_info_items, batch_df['segmented_info_items'], persuasion_levels, personas)):
                 info_item_numbers = extract_information_item_numbers(specific_item)
                 unique_info_items_sets[idx].update(info_item_numbers)
                 
                 if info_item_numbers:
                     chosen_item = f"Information Item #{info_item_numbers[0]}"
-                    segments, used_segments_dicts[idx], persona = get_random_segments(segmented_items, chosen_item, used_segments_dicts[idx])
+                    segments, used_segments_dicts[idx] = get_random_segments(segmented_items, chosen_item, used_segments_dicts[idx], persuasion_level, persona)
                     extracted_segments_sets[idx].update([seg.strip() for seg in segments.split('\n') if seg.strip()])
                 else:
                     segments = "No specific information item was chosen."

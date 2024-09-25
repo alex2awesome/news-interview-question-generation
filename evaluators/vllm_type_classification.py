@@ -192,13 +192,16 @@ def is_actual_question_same_for_all_files(file_paths, column_name="Actual_Questi
 if __name__ == "__main__":
     dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/baseline/QA_Seq_LLM_generated.csv"
     df = pd.read_csv(dataset_path)
-
-    human_question_type_labels = classify_human_question_process_dataset(df, batch_size=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
-    path_lst = ["/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/baseline/QA_Seq_LLM_generated.csv", 
-                "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/CoT/QA_Seq_LLM_generated.csv",
-                "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/CoT_outline/QA_Seq_LLM_generated.csv",
-                "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/outline/QA_Seq_LLM_generated.csv"]
+    df = df.head(10)
+    # human_question_type_labels = classify_human_question_process_dataset(df, batch_size=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    # path_lst = ["/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/baseline/QA_Seq_LLM_generated.csv", 
+    #             "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/CoT/QA_Seq_LLM_generated.csv",
+    #             "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/CoT_outline/QA_Seq_LLM_generated.csv",
+    #             "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/outline/QA_Seq_LLM_generated.csv"]
     
-    for path in path_lst:
-        df = pd.read_csv(path)
-        human_label_appender(df, human_question_type_labels, input_file_path=path)
+    # for path in path_lst:
+    #     df = pd.read_csv(path)
+    #     human_label_appender(df, human_question_type_labels, input_file_path=path)
+    human_question_type_labels = classify_human_question_process_dataset(df, batch_size=100, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    print(human_question_type_labels)
+    

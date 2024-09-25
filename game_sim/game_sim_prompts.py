@@ -41,7 +41,43 @@ STRAIGHTFORWARD_PROMPT = '''
     You: [The three main challenges we encountered were: first, unexpected supply chain disruptions that delayed key components; second, a shortage of skilled labor in the local market; and third, some initial miscommunication between our design and implementation teams. We addressed each of these issues by...]
 '''
 
+PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
+    "straightforward": '''
+    **Straightforward Persona Example**:
+    Interviewer's question: "Can you walk us through the key factors that led to the project's success?"
+    Straightforward Source's response: 
+    - (Not persuaded) [Sure. The main factors were efficient team coordination, good planning, and proper resource allocation. We had a clear strategy from day one.]
+    - (Persuaded) [Additionally, we were able to secure additional funding midway through the project, which helped us overcome initial challenges.]
+    ''',
+    "avoidant": '''
+    **Avoidant Persona Example**:
+    Interviewer's question: "Can you explain more about the delays in the project?"
+    Avoidant Source's response: 
+    - (Not persuaded) [Well, we did face some delays, but everything's under control now. I don't think it's worth getting into too much detail.] 
+    - (Persuaded) [Actually, one of the main issues was the supply chain, but we've sorted that out.]
+    ''',
+    "defensive": '''
+    **Defensive Persona Example**:
+    Interviewer's question: "Why did the project go over budget?"
+    Defensive Source's response: 
+    - (Not persuaded) [It's not really fair to say the project went over budget. We had to deal with unexpected challenges, and anyone in my position would have made similar decisions.]
+    - (Persuaded) [That said, one area where costs increased was in material prices, which were out of our control.]
+    ''',
+    "evasive": '''
+    **Evasive Persona Example**:
+    Interviewer's question: "What was the root cause of the project failure?"
+    Evasive Source's response: 
+    - (Not persuaded) [Projects like this are always tricky. There are many factors involved, and it's hard to pinpoint a single cause.]
+    - (Persuaded) [Well, if I had to point to one area, the lack of proper communication between teams was a big factor.]
+    '''
+}
+
 def get_advanced_source_persona_prompt(QA_Sequence, info_items, specific_info_item, persona_type, persona_prompt):
+    if persona_type.lower() in PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES:
+        few_shot_examples = PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get(persona_type.lower())
+    else:
+        few_shot_examples = PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get('straightforward')
+
     prompt = f'''
     You are a source getting interviewed. You have the following pieces of information:
 
@@ -65,31 +101,9 @@ def get_advanced_source_persona_prompt(QA_Sequence, info_items, specific_info_it
         - If persuaded, you are more likely to provide more detailed information (e.g., sharing additional segments from the specific information item).
         - If not persuaded, continue responding in line with your persona (e.g., avoidant, defensive, evasive).
 
-    ### Important: Wrap your final response in brackets so it can be parsed. Example:
+    ### Important: Wrap your final response in brackets so it can be parsed. Here are some examples:
 
-    ### **Avoidant Persona Example**:
-    Interviewer’s question: "Can you explain more about the delays in the project?"
-    Avoidant Source’s response: 
-    - (Not persuaded) [Well, we did face some delays, but everything's under control now. I don’t think it’s worth getting into too much detail.] 
-    - (Persuaded) [Actually, one of the main issues was the supply chain, but we’ve sorted that out.]
-
-    ### **Defensive Persona Example**:
-    Interviewer’s question: "Why did the project go over budget?"
-    Defensive Source’s response: 
-    - (Not persuaded) [It’s not really fair to say the project went over budget. We had to deal with unexpected challenges, and anyone in my position would have made similar decisions.]
-    - (Persuaded) [That said, one area where costs increased was in material prices, which were out of our control.]
-
-    ### **Evasive Persona Example**:
-    Interviewer’s question: "What was the root cause of the project failure?"
-    Evasive Source’s response: 
-    - (Not persuaded) [Projects like this are always tricky. There are many factors involved, and it’s hard to pinpoint a single cause.]
-    - (Persuaded) [Well, if I had to point to one area, the lack of proper communication between teams was a big factor.]
-
-    ### **Straightforward Persona Example**:
-    Interviewer’s question: "Can you walk us through the key factors that led to the project's success?"
-    Straightforward Source’s response: 
-    - (Not persuaded) [Sure. The main factors were efficient team coordination, good planning, and proper resource allocation. We had a clear strategy from day one.]
-    - (Persuaded) [Additionally, we were able to secure additional funding midway through the project, which helped us overcome initial challenges.]
+        {few_shot_examples}
 
     Please use this specific piece of information as a base, and pair it with your {persona_type} persona to craft your response: 
         {specific_info_item} 
@@ -98,8 +112,6 @@ def get_advanced_source_persona_prompt(QA_Sequence, info_items, specific_info_it
         **Wrap your response in brackets**, like this: [<your response>]
     '''
     return prompt
-
-##  ^^{inject relevant persona example}
 
 def get_source_persuasion_level_prompt(current_conversation):
     prompt = f'''

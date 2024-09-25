@@ -14,11 +14,12 @@ import pandas as pd
 
 # hugging face environment setup for VLLM functionality
 def setup_hf_env():
-    HF_HOME = "/project/jonmay_231/spangher/huggingface_cache"
-    config_data = json.load(open('/project/jonmay_231/spangher/Projects/news-interview-question-generation/configs/config.json'))
+    dir_of_this_script = os.path.dirname(os.path.abspath(__file__))
+    path_to_config = os.path.join(dir_of_this_script, 'configs', 'config.json')
+    with open(path_to_config, 'r') as config_file:
+        config_data = json.load(config_file)
     os.environ['HF_TOKEN'] = config_data["HF_TOKEN"]
-    os.environ['HF_HOME'] = HF_HOME
-    return HF_HOME
+    return os.getenv('HF_HOME')
 
 # vllm framework model loader
 def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):

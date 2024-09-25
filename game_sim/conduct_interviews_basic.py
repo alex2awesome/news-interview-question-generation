@@ -213,14 +213,15 @@ def conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-
 if __name__ == "__main__":
     data_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/outlines/final_df_with_outlines.csv"
     df = pd.read_csv(data_path)
-    df = df.head(3)
     print(df)
-    # df has columns info_items and outlines
+
     num_turns = 8
     simulated_interviews = conduct_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
-    print(f"dataset with simulated interviews: {simulated_interviews}\n")
-    for i, interview in enumerate(simulated_interviews['final_conversations']):
-        print(f"Interview {i+1}:\n {interview}\n\n\n")
+    print(simulated_interviews)
+    
+    # print(f"dataset with simulated interviews: {simulated_interviews}\n")
+    # for i, interview in enumerate(simulated_interviews['final_conversations']):
+    #     print(f"Interview {i+1}:\n {interview}\n\n\n")
 
 '''
 from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.

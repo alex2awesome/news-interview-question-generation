@@ -84,8 +84,8 @@ if __name__ == "__main__":
     # df_with_outlines = process_outlines(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
     # print(df_with_outlines)
 
-    test_file = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/outlines/final_df_with_outlines.csv"
-    test_df = pd.read_csv(test_file)
+    info_item_dataset_file = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/segmented_info_items/final_df_with_segmented_info_items.csv"
+    test_df = pd.read_csv(info_item_dataset_file)
     print(test_df["outlines"].iloc[2])
     print(test_df["id"].iloc[2])
 

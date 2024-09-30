@@ -13,8 +13,9 @@ import numpy as np
 from scipy.stats import beta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files
-from game_sim.game_sim_prompts import get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_item_prompt, get_source_persuasion_level_prompt, get_advanced_source_persona_prompt, get_advanced_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt, AVOIDANT_PROMPT, DEFENSIVE_PROMPT, EVASIVE_PROMPT, STRAIGHTFORWARD_PROMPT
+from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
+from game_sim.game_sim_prompts import get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_item_prompt, get_source_persuasion_level_prompt, get_advanced_source_persona_prompt, get_advanced_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
+os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 # ---- batch use ---- #
 def vllm_infer_batch(messages_batch, model, tokenizer):
@@ -49,34 +50,37 @@ def extract_information_item_numbers(response):
 def count_information_items(info_items_text):
     return len(re.findall(r'(?i)information item #?\d+', info_items_text))
 
-# selects random segments from a given information item, returning the formatted segments and an updated used_segments_dict.
-def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, max_proportion=1.0, persuasion_level=1, persona='avoidant'):
+# select random segments from a specified information item based on persona and persuasion level
+def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, persona, persuasion_level, max_proportion=1.0):
     try:
         segmented_info_items = ast.literal_eval(segmented_info_items_str)
     except:
-        return "Error: Unable to parse segmented info items.", used_segments_dict, None
+        return "Error: Unable to parse segmented info items.", used_segments_dict
 
-    item_number = int(re.search(r'#(\d+)', chosen_info_item).group(1))
+    match = re.search(r'#(\d+)', chosen_info_item)
+    if not match:
+        return "Error: Unable to parse chosen_info_item.", used_segments_dict
+    item_number = int(match.group(1))
     item_key = f"Information item #{item_number}"
 
     if item_key not in segmented_info_items:
-        return "No segments found for this information item.", used_segments_dict, None
+        return "No segments found for this information item.", used_segments_dict
 
     segments = segmented_info_items[item_key]
-    total_segments = len(segments)
-
+    
     if item_key not in used_segments_dict:
         used_segments_dict[item_key] = set()
 
     available_segments = [seg for i, seg in enumerate(segments) if i not in used_segments_dict[item_key]]
 
     if not available_segments:
-        return "All segments for this item have been used.", used_segments_dict, None
+        return "All segments for this item have been used.", used_segments_dict
 
-    proportion_to_return = random.uniform(0, min(max_proportion, 1.0))
-    
+    proportion_to_return = sample_proportion_from_beta(persona, persuasion_level)
+    proportion_to_return = min(proportion_to_return, max_proportion)
+
     num_segments_to_return = round(proportion_to_return * len(available_segments))
-    num_segments_to_return = max(1, num_segments_to_return)  
+    num_segments_to_return = max(1, num_segments_to_return)  # Ensure at least one segment is returned
 
     selected_segments = random.sample(available_segments, num_segments_to_return)
 
@@ -91,25 +95,29 @@ def get_random_segments(segmented_info_items_str, chosen_info_item, used_segment
 PERSONA_DICT = {
     'anxious': [(2, 4), (4, 4), (4, 2)],
     'avoidant': [(1.5, 3), (4, 3), (7, 2)],
-    'evasive': [],
-    'straightforward': []
+    'straightforward': [(4, 1.5), (5, 1), (7, 0.5)], # example parameters
+    'poor explainer': [(2, 3), (3, 2), (4, 1)], # example parameters
+    'dominating': [(5, 1.5), (6, 1), (8, 0.5)], # example parameters
+    'clueless': [(1, 3), (2, 3), (3, 2)] # example parameters
 }
 
-def sample_info_items(num_info_items, persuasion_level, persona):
+def sample_proportion_from_beta(persona, persuasion_level):
     """
-    Sample the # of info_items to return out of the total `num_info_items`
+    Sample a proportion from the beta distribution based on persona and persuasion level.
 
     Parameters:
-        * `num_info_items`: total number of info items available to divulge
-        * `persona`: the persona of the source (\in {'anxious', 'avoidant', ...}
-        * `persuasion_level`: how persuaded the source is (\in {0, 1, 2})
+        - persona (str): The persona of the source (e.g., 'anxious', 'avoidant', etc.).
+        - persuasion_level (int): The level of persuasion (0, 1, or 2).
+
+    Returns:
+        float: A proportion between 0 and 1 sampled from the beta distribution.
     """
 
     a, b = PERSONA_DICT[persona][persuasion_level]
-    x = np.linspace(0, 1, num_info_items)
-    y_cdf = beta.cdf(x, a, b)
-    ps = y_cdf[1:] - y_cdf[:-1]
-    return np.random.choice(range(num_info_items), p=ps)
+    proportion = beta.rvs(a, b)
+    proportion = max(0.0, min(1.0, proportion))
+
+    return proportion
 
 def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_advanced"):
     os.makedirs(output_dir, exist_ok=True)
@@ -120,14 +128,8 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
     unique_info_item_counts = [0] * num_samples
     total_info_item_counts = [0] * num_samples
 
-    persona_prompts = {
-        "Avoidant": AVOIDANT_PROMPT,
-        "Defensive": DEFENSIVE_PROMPT,
-        "Evasive": EVASIVE_PROMPT,
-        "Straightforward": STRAIGHTFORWARD_PROMPT
-    }
-
-    persona_types = ["Avoidant", "Defensive", "Evasive", "Straightforward"]
+    persona_types = ["avoidant", "defensive", "straightforward", 
+                     "poor explainer", "dominating", "clueless"]
 
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
@@ -195,7 +197,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
                 for ch, question in zip(current_conversations, interviewer_questions)
             ]
 
-            # ask source for specific information item
+            # get specific information item
             specific_info_item_prompts = [
                 get_source_specific_info_item_prompt(current_conversation, info_item_list)
                 for current_conversation, info_item_list in zip(current_conversations, info_items)
@@ -206,26 +208,39 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
                 for response in interviewee_specific_item_responses
             ]
 
-            # ask source for level of persuasion
+            # get level of persuasion
             persuasion_level_prompts = [
-                get_source_persuasion_level_prompt(current_conversations)
-                for current_conversation in current_conversations
+                get_source_persuasion_level_prompt(current_conversation, persona)
+                for current_conversation, persona in zip(current_conversations, personas)
             ]
             interviewee_persuasion_level_responses = generate_vllm_SOURCE_response_batch(persuasion_level_prompts, model, tokenizer)
             persuasion_levels = [
-                extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No"
+                extract_text_inside_brackets(response)
                 for response in interviewee_persuasion_level_responses
             ]
             
-            # ask source for response, given specific info segments 
+            # get specific info segments
             random_segments = []
-            for idx, (specific_item, segmented_items, persuasion_level, persona) in enumerate(zip(specific_info_items, batch_df['segmented_info_items'], persuasion_levels, personas)):
+            for idx, (specific_item, segmented_items, persuasion_level_str, persona) in enumerate(zip(specific_info_items, batch_df['segmented_info_items'], persuasion_levels, personas)):
                 info_item_numbers = extract_information_item_numbers(specific_item)
                 unique_info_items_sets[idx].update(info_item_numbers)
                 
                 if info_item_numbers:
                     chosen_item = f"Information Item #{info_item_numbers[0]}"
-                    segments, used_segments_dicts[idx] = get_random_segments(segmented_items, chosen_item, used_segments_dicts[idx], persuasion_level, persona)
+
+                    try:
+                        persuasion_level_int = int(persuasion_level_str)
+                    except (ValueError, TypeError):
+                        persuasion_level_int = 0
+                    if persuasion_level_int not in [0, 1, 2]:
+                        persuasion_level_int = 0
+
+                    segments, used_segments_dicts[idx] = get_random_segments(
+                        segmented_items, 
+                        chosen_item, 
+                        used_segments_dicts[idx], 
+                        persona,
+                        persuasion_level_int)
                     extracted_segments_sets[idx].update([seg.strip() for seg in segments.split('\n') if seg.strip()])
                 else:
                     segments = "No specific information item was chosen."
@@ -235,8 +250,8 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
 
             # source response
             source_prompts = [
-                get_advanced_source_persona_prompt(current_conversation, info_item_list, random_segment, persona_prompts, persona_prompts[persona])
-                for current_conversation, info_item_list, random_segment in zip(current_conversations, info_items, random_segments)
+                get_advanced_source_persona_prompt(current_conversation, info_item_list, random_segment, persona)
+                for current_conversation, info_item_list, random_segment, persona in zip(current_conversations, info_items, random_segments, personas)
             ]
             interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
             interviewee_answers = [extract_text_inside_brackets(response) for response in interviewee_responses]
@@ -296,13 +311,16 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
     return final_df
 
 if __name__ == "__main__":
-    data_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/segmented_info_items/final_df_with_segmented_info_items.csv"
-    df = pd.read_csv(data_path)
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    project_root = find_project_root(current_path, 'news-interview-question-generation')
+    dataset_path = os.path.join(project_root, "news-interview-question-generation/output_results/game_sim/outlines/final_df_with_outlines.csv")
+    df = pd.read_csv(dataset_path)
     df = df.head(10)
     print(df)
     # df has columns info_items and outlines
     num_turns = 8
     simulated_interviews = conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    
     print(f"dataset with simulated interviews: {simulated_interviews}\n")
     for i, interview in enumerate(simulated_interviews['final_conversations']):
         print(f"Interview {i+1}:\n {interview}\n\n\n")

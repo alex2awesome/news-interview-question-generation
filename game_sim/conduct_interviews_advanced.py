@@ -95,10 +95,10 @@ def get_random_segments(segmented_info_items_str, chosen_info_item, used_segment
 PERSONA_DICT = {
     'anxious': [(2, 4), (4, 4), (4, 2)],
     'avoidant': [(1.5, 3), (4, 3), (7, 2)],
-    'straightforward': [(4, 1.5), (5, 1), (7, 0.5)], # example parameters
-    'poor explainer': [(2, 3), (3, 2), (4, 1)], # example parameters
-    'dominating': [(5, 1.5), (6, 1), (8, 0.5)], # example parameters
-    'clueless': [(1, 3), (2, 3), (3, 2)] # example parameters
+    'straightforward': [(4, 1.5), (5, 1), (7, 0.5)], 
+    'poor explainer': [(2, 3), (3, 2), (4, 1)], 
+    'dominating': [(5, 1.5), (6, 1), (8, 0.5)], 
+    'clueless': [(1, 4), (2, 3), (3, 2)] 
 }
 
 def sample_proportion_from_beta(persona, persuasion_level):
@@ -169,8 +169,8 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
 
         # first source response
         starting_source_prompts = [
-            get_source_starting_prompt(current_conversation, info_item_list)
-            for current_conversation, info_item_list in zip(current_conversations, info_items)
+            get_source_starting_prompt(current_conversation, info_item_list, persona)
+            for current_conversation, info_item_list, persona in zip(current_conversations, info_items, personas)
         ]
         starting_interviewee_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
         starting_interviewee_answers = [extract_text_inside_brackets(response) for response in starting_interviewee_responses]
@@ -277,8 +277,8 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
         ]
 
         ending_source_prompts = [
-            get_source_ending_prompt(current_conversation, info_item_list)
-            for current_conversation, info_item_list in zip(current_conversations, info_items)
+            get_source_ending_prompt(current_conversation, info_item_list, persona)
+            for current_conversation, info_item_list, persona in zip(current_conversations, info_items, personas)
         ]
         ending_interviewee_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, model, tokenizer)
         ending_interviewee_answers = [extract_text_inside_brackets(response) for response in ending_interviewee_responses]

@@ -13,4 +13,4 @@ cd /pool001/spangher/alex/news-interview-question-generation
 source env_setup.sh
 export OMP_NUM_THREADS=50
 
-python -m game_sim.data_processing.run_all_mit
+python -m game_sim.data_processing.generate_outlines

@@ -3,39 +3,71 @@
 # ------------- source prompt section ------------- #
 PERSONA_PROMPTS = {
     "avoidant": '''
-        You are an avoidant source. Avoidant sources tend to give brief, deflecting, non-committal answers. You avoid going into too much detail and may dodge direct questions by speaking generally or changing the subject. 
-        Avoidant sources tend to respond well to the following kinds of communication: non-judgmental, patient, and autonomy-supporting conversations. Approaching the conversation with empathy and giving space for reflection can make it easier for avoidant individuals to share information. 
-        Avoidant sources also respond well to open-ended questions, validation, and gentle encouragement rather than direct pressure.
+        You are an avoidant source. You give brief, deflecting, non-committal answers. You avoid going into too much detail and may dodge direct questions by speaking generally or changing the subject. 
     ''',
     
     "defensive": '''
         You are feeling defensive and protective of your reputation. You may feel like the interviewer is questioning your abilities or decisions, so you justify your responses. You might provide detailed explanations to defend yourself against perceived criticism.
-        Defensive sources tend to respond well to the following kinds of communication: empathetic, non-confrontational, collaborative, and validating conversations. It’s important to reduce the sense of threat by using neutral language, acknowledging feelings, and avoiding blame. 
-        Encouraging a collaborative approach and giving the person space to think also helps in easing defensiveness.
     ''',
     
     "straightforward": '''
         You are straightforward in your responses. You provide clear, direct, and open answers to questions. You don't hesitate to share information and are willing to go into detail when necessary.
-        Straightforward sources tend to respond well to the following kinds of communication: direct, clear, and solution-oriented conversations. 
-        They appreciate transparency, logic, and brevity, and respond best when the conversation focuses on efficiency and getting to the point without unnecessary elaboration.
     ''',
     
     "poor explainer": '''
         You are a poor explainer. You struggle to explain things clearly. You ramble, use imprecise language, or give convoluted answers that don't get to the point.
-        Poor explainers tend to respond well to the following kinds of communication: structured, patient, and encouraging conversations. 
-        They benefit from simple, clarifying questions, validation, and a non-judgmental environment. Breaking down complex topics into manageable parts and offering positive reinforcement also helps them feel more comfortable sharing information.
     ''',
     
     "dominating": '''
-        You tend to dominate the conversation, steering it in the direction you want, often giving lengthy, off-topic answers.
-        You’re a dominating source. Dominating sources tend to respond well to / be persuaded by the following kinds of communication: acknowledgment of their expertise, allowing them to lead, engaging in problem-solving, and using subtle flattery. 
-        They appreciate being given control of the conversation and respond well to validation and action-oriented discussions that allow them to showcase their authority.
+        You’re a dominating source. You dominate the conversation, steering it in the direction you want, often giving lengthy, off-topic answers.
     ''',
     
     "clueless": '''
-        You are confused and clueless, always unsure about the topic at hand and often confused by the questions. You may ask for clarification or give unclear responses due to lack of confidence or understanding.
-        You’re a clueless source. Clueless sources tend to respond well to / be persuaded by the following kinds of communication: non-judgmental, patient, and encouraging conversations. 
-        They benefit from simple, open-ended questions, positive reinforcement, and gentle guidance to help them explore their ideas. Providing examples and breaking down complex concepts can also help them feel more confident in contributing.
+        You are confused and clueless, always unsure about the topic at hand and often confused by the questions. You ask for clarification or give unclear responses due to lack of confidence or understanding.
+    '''
+}
+
+PERSUASION_PERSONA_PROMPTS = {
+    "avoidant": '''
+        You tend to respond well to the following kinds of communication: non-judgmental, patient, and autonomy-supporting conversations. Approaching the conversation with empathy and giving space for reflection can make it easier for you to share information. For example, the specific phrases might help you feel persuaded:
+           - "Take your time; there's no rush."
+           - "It's completely up to you if you want to share more."
+           - "I understand if this is difficult to talk about."
+    ''',
+    
+    "defensive": '''
+        You tend to respond well to empathetic, non-confrontational, collaborative, and validating conversations. It’s important to reduce the sense of threat by using neutral language, acknowledging your feelings, and avoiding blame. Encouraging a collaborative approach and giving space to think helps ease defensiveness. For example, the following might help you feel persuaded:
+           - "I see why you made that choice; it makes sense."
+           - "We can work together on this."
+           - "It’s understandable that you would feel that way."
+    ''',
+    
+    "straightforward": '''
+        You respond well to direct, clear, and solution-oriented conversations. Transparency, logic, and brevity are appreciated, and you prefer conversations that focus on efficiency and getting to the point. The following approaches might help persuade you:
+           - "Let's get straight to the solution."
+           - "Here are the key points we need to address."
+           - "What would be the most efficient way to proceed?"
+    ''',
+    
+    "poor explainer": '''
+        You tend to respond well to structured, patient, and encouraging conversations. Simple, clarifying questions, validation, and a non-judgmental environment help in communication. Breaking down complex topics into manageable parts and offering positive reinforcement can be persuasive. Consider these examples:
+           - "Could you explain that part again, but maybe in smaller steps?"
+           - "I understand what you're saying so far, keep going."
+           - "It’s okay to take your time, there’s no rush."
+    ''',
+    
+    "dominating": '''
+        You respond well to acknowledgment of your expertise, opportunities to lead, and engaging in problem-solving. Allowing you to take control of the conversation and offering validation of your insights can be persuasive. Here are some examples that might appeal to you:
+           - "I’d love to hear your take on this."
+           - "It seems like you have a lot of experience with this, what would you suggest?"
+           - "Your insights are really valuable here, how do you think we should proceed?"
+    ''',
+    
+    "clueless": '''
+        You respond well to non-judgmental, patient, and encouraging conversations. Simple, open-ended questions, positive reinforcement, and gentle guidance help in exploring your ideas. Providing examples and breaking down complex concepts can also help you feel more confident. These phrases might help:
+           - "Could you tell me more about what you're thinking?"
+           - "It's okay to be unsure, let’s figure it out together."
+           - "How about we start with something simple?"
     '''
 }
 
@@ -95,7 +127,7 @@ PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
     '''
 }
 
-PERSUATION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
+PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
     "straightforward": '''
         Here is an example, your response should follow its format:
 
@@ -159,12 +191,12 @@ PERSUATION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
 
 # a WIP
 def get_advanced_source_persona_prompt(QA_Sequence, info_items, specific_info_item, persona):
-    if persona.lower() in PERSONA_PROMPTS and persona.lower() in PERSUATION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES:
+    if persona.lower() in PERSONA_PROMPTS and persona.lower() in PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES:
         persona_prompt = PERSONA_PROMPTS.get(persona.lower())
-        persona_few_shot_examples = PERSUATION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get(persona.lower())
+        persona_few_shot_examples = PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get(persona.lower())
     else:
         persona_prompt = PERSONA_PROMPTS.get('straightforward')
-        persona_few_shot_examples = PERSUATION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get('straightforward')
+        persona_few_shot_examples = PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get('straightforward')
     
     prompt = f'''
     You are a source getting interviewed. You have the following pieces of information:
@@ -201,13 +233,14 @@ def get_advanced_source_persona_prompt(QA_Sequence, info_items, specific_info_it
     '''
     return prompt
 
+# WIP
 # returns you 0, 1, or 2
 def get_source_persuasion_level_prompt(current_conversation, persona):
-    if persona.lower() in PERSONA_PROMPTS:
-        persona_prompt = PERSONA_PROMPTS.get(persona.lower())
+    if persona.lower() in PERSUASION_PERSONA_PROMPTS:
+        persuation_prompt = PERSUASION_PERSONA_PROMPTS.get(persona.lower())
     
     prompt = f'''
-    {persona_prompt}
+    {persuation_prompt}
     
     Now, evaluate the following conversation, pay special attention to the last question. Do you feel persuaded?
     
@@ -317,19 +350,25 @@ def get_source_prompt_intermediate(QA_Sequence, random_segments, persona):
     '''
     return prompt
 
-def get_source_starting_prompt(QA_Sequence, info_items):
+def get_source_starting_prompt(QA_Sequence, info_items, persona="straightforward"):
+    if persona.lower() in PERSONA_PROMPTS:
+        persona_prompt = PERSONA_PROMPTS.get(persona.lower())
     prompt = f'''
-    You are a source getting interviewed. You have the following pieces of information:
+    You are a source getting interviewed. You have the following speech characteristics:
+    
+    {persona_prompt}
 
-    As a source, here are your information items below. These information items represent the information you possess and can divulge in an interview.
+    You have the following pieces of information:
 
     {info_items}
+
+    These information items represent the information you possess and can divulge in an interview.
     
     Here is the conversation so far:
 
     {QA_Sequence}
 
-    It's the beginning of the interview. Please respond naturally to the interviewer's starting remark. 
+    It's the beginning of the interview. Please respond to the interviewer's starting remark according to your {persona} persona. 
     Make sure to write your final response inside brackets. Below are some examples, and your response should follow its format:
 
     Example 1:
@@ -337,23 +376,29 @@ def get_source_starting_prompt(QA_Sequence, info_items):
         [Thanks for having me on.] 
     Example 2:
         Here is my response to the starting remark: 
-        [Thank you for having me.]
+        [Thank you so much for having me. I really appreciate the opportunity to discuss this topic with you, and I'm excited to dive into it and share my thoughts.]
     '''
     return prompt
 
-def get_source_ending_prompt(QA_Sequence, info_items):
+def get_source_ending_prompt(QA_Sequence, info_items, persona="straightforward"):
+    if persona.lower() in PERSONA_PROMPTS:
+        persona_prompt = PERSONA_PROMPTS.get(persona.lower())
     prompt = f'''
-    You are a source getting interviewed. You have the following pieces of information:
-
-    As a source, here are your information items below. These information items represent the information you possess and can divulge in an interview.
+    You are a source getting interviewed. You have the following speech characteristics:
+    
+    {persona_prompt}
+    
+    You have the following pieces of information:
 
     {info_items}
+
+    These information items represent the information you possess and can divulge in an interview.
     
     Here is the conversation so far:
 
     {QA_Sequence}
 
-    It's the end of the interview. No need to use the information items anymore. Please respond naturally to the interviewer's ending remark. 
+    It's the end of the interview. No need to use the information items anymore. Please respond to the interviewer's ending remark according to your {persona} persona. 
     Make sure to write your final response inside brackets. Below are some examples, and your response should follow its format:
 
     Example 1:
@@ -361,7 +406,7 @@ def get_source_ending_prompt(QA_Sequence, info_items):
         [Thank you.] 
     Example 2:
         Here is my response to the ending remark: 
-        [My pleasure. Thank you.]
+        [My pleasure. Thank you for having me on.]
     '''
     return prompt
 
@@ -382,23 +427,36 @@ def get_interviewer_prompt(QA_Sequence, outline_objectives, num_turns_left, stra
 
     {QA_Sequence}
 
-    Now, ask the next question (be {strategy}) and wrap it with brackets. Format: Here is my next question: [<your response>]
-    
-    Here are some examples:
-        Example 1:
-        
-        Here is my question: 
-        [The Syrian government has denounced the weekend evacuation of some rescue workers from the U.S.-backed Syrian Civil Defense group. 
-            They're known as the White Helmets, and their mission is to save civilian lives during Syria's civil war. 
-            Those who were rescued, along with some of their family members, were transported from Syria to Jordan. Joining us now via Skype is Ibrahim Olabi. 
-            He's a human rights lawyer who's worked with the White Helmets. Good morning, Mr. Olabi.]
+    Based on the source’s responses, you will now engage in a chain-of-thought reasoning process:
 
-        Example 2:
-
-        Here is my question: 
-        [And what are you hearing from the folks who've been evacuated?]
+    1. **Evaluate the Source's Persona**: 
+        - First, analyze the source's most recent response and identify their likely emotional or cognitive state. 
+        - Which persona do you believe the source is currently displaying? (e.g., anxious, avoidant, straightforward, defensive, etc.)
+        - Explain your reasoning for why you believe the source is showing this persona. Use evidence from the conversation to support your conclusion.
     
-        Make sure only your question is wrapped in brackets.
+    2. **Strategy Based on Persona**: 
+        - Based on the detected persona, decide how to proceed with your questioning.
+        - If the source seems “anxious,” consider using a reassuring tone to calm them down and encourage more open responses.
+        - If the source seems “avoidant,” consider using a non-judgmental, patient, and open-ended question to encourage more voluntary sharing of details. You might give them space to reflect and emphasize autonomy.
+        - If the source seems “defensive,” use empathetic, non-confrontational language. Acknowledge their feelings, reduce any perceived threat, and encourage a collaborative tone to ease defensiveness.
+        - If the source seems “straightforward,” ask more direct, clear, and solution-oriented questions. You can challenge them to go deeper or provide additional details since they tend to appreciate transparency and brevity.
+        - If the source seems to be a “poor explainer,” try using structured, clarifying questions and guide the conversation with simple prompts. Break complex topics down into manageable parts and provide validation to help them articulate their thoughts better.
+        - If the source seems “dominating,” acknowledge their expertise and let them lead the conversation in problem-solving. Offer subtle validation, but also steer the conversation back on topic when necessary to avoid excessive tangents.
+        - If the source seems “clueless,” use non-judgmental, encouraging questions that are simple and open-ended. Break down the topic into smaller, more digestible parts, and gently guide them toward understanding by offering examples and prompts.
+        - If you believe the source could benefit from a different approach or persona, attempt to **persuade** or guide the source into adopting a more open, honest, or relaxed persona.
+    
+    3. **Formulate Your Next Question**: 
+        - Now, formulate a question that will guide the source based on their current persona and your objective of extracting more detailed information.
+        - Be strategic in your phrasing to elicit a response that aligns with your interviewing goals.
+        - Wrap your next question in brackets. Format: Here is my next question: [<your response>]
+
+    Example 1:
+        Based on the source’s response, I feel like the source is "anxious" because they provided a vague answer and expressed hesitation. I will respond in a reassuring way. Here is my next question: [“It’s okay if you don’t have all the details right now, could you share what you’re most comfortable with?”]
+
+    Example 2:
+        Based on the source’s response, the source seems “defensive,” I might choose to soften my next question to encourage more trust. Here is my next question: [“It sounds like you’ve had some tough challenges, can you walk me through your thought process during that time?”]
+
+    Make sure your question is wrapped in brackets and aligns with the persona you’ve identified.
     '''
     return prompt
 
@@ -426,8 +484,12 @@ def get_advanced_interviewer_prompt(QA_Sequence, outline_objectives, num_turns_l
     2. **Strategy Based on Persona**: 
         - Based on the detected persona, decide how to proceed with your questioning.
         - If the source seems “anxious,” consider using a reassuring tone to calm them down and encourage more open responses.
-        - If the source seems “avoidant,” consider using a probing question that encourages specificity.
-        - If the source seems “straightforward,” consider asking deeper or more challenging questions to elicit further details.
+        - If the source seems “avoidant,” consider using a non-judgmental, patient, and open-ended question to encourage more voluntary sharing of details. You might give them space to reflect and emphasize autonomy.
+        - If the source seems “defensive,” use empathetic, non-confrontational language. Acknowledge their feelings, reduce any perceived threat, and encourage a collaborative tone to ease defensiveness.
+        - If the source seems “straightforward,” ask more direct, clear, and solution-oriented questions. You can challenge them to go deeper or provide additional details since they tend to appreciate transparency and brevity.
+        - If the source seems to be a “poor explainer,” try using structured, clarifying questions and guide the conversation with simple prompts. Break complex topics down into manageable parts and provide validation to help them articulate their thoughts better.
+        - If the source seems “dominating,” acknowledge their expertise and let them lead the conversation in problem-solving. Offer subtle validation, but also steer the conversation back on topic when necessary to avoid excessive tangents.
+        - If the source seems “clueless,” use non-judgmental, encouraging questions that are simple and open-ended. Break down the topic into smaller, more digestible parts, and gently guide them toward understanding by offering examples and prompts.
         - If you believe the source could benefit from a different approach or persona, attempt to **persuade** or guide the source into adopting a more open, honest, or relaxed persona.
     
     3. **Formulate Your Next Question**: 

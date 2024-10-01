@@ -185,6 +185,15 @@ def price_calculator(tok_count, model='gpt-4o', batch=False):
         return f'total price: ${0.0000025 * tok_count}'
     return f'total price: ${0.000005 * tok_count}'
 
+def find_project_root(current_path, project_dir_name):
+    while True:
+        if project_dir_name in os.listdir(current_path):
+            return os.path.join(current_path, project_dir_name)
+        parent_dir = os.path.dirname(current_path)
+        if current_path == parent_dir:
+            raise ValueError(f"Project directory '{project_dir_name}' not found.")
+        current_path = parent_dir
+
 if __name__ == "__main__": 
     directory_path = 'output_results/gpt_batching/gpt4o_csv_outputs'
     output_file = 'output_results/gpt_batching/gpt4o_csv_outputs/gpt_all_interviews_combined.csv'

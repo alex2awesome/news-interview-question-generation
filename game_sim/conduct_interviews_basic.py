@@ -7,7 +7,6 @@ from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 import gc
 import torch
-import math
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
@@ -83,13 +82,10 @@ def log_gpu_memory():
     for i in range(torch.cuda.device_count()):
         print(f"GPU {i}: {torch.cuda.memory_allocated(i) / 1e9} GB allocated")
 
-def conduct_basic_interviews_batch(num_turns, df, interviewer_model_name = "meta-llama/Meta-Llama-3-70B-Instruct", source_model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_basic"):
+def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-Llama-3-70B-Instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_basic"):
     os.makedirs(output_dir, exist_ok=True)
-    interviewer_model = load_vllm_model(interviewer_model_name, tensor_parallel_size=2)
-    interviewer_tokenizer = initialize_tokenizer(interviewer_model_name)
-    
-    source_model = load_vllm_model(source_model_name, tensor_parallel_size=2)
-    source_tokenizer = initialize_tokenizer(source_model_name)
+    model = load_vllm_model(model_name)
+    tokenizer = initialize_tokenizer(model_name)
 
     num_samples = len(df)
     unique_info_item_counts = [0] * num_samples
@@ -115,7 +111,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_model_name = "meta
         ]
 
         all_prompts.extend(starting_interviewer_prompts) # TEMP LINE (DELETE LATER)
-        starting_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(starting_interviewer_prompts, interviewer_model, interviewer_tokenizer)
+        starting_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(starting_interviewer_prompts, model, tokenizer)
         all_responses.extend(starting_interviewer_responses) # TEMP LINE (DELETE LATER)
         
         starting_interviewer_questions = [
@@ -133,7 +129,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_model_name = "meta
         ]
 
         all_prompts.extend(starting_source_prompts) # TEMP LINE (DELETE LATER)
-        starting_interviewee_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, source_model, source_tokenizer)
+        starting_interviewee_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
         all_responses.extend(starting_interviewee_responses) # TEMP LINE (DELETE LATER)
        
         starting_interviewee_answers = [extract_text_inside_brackets(response) for response in starting_interviewee_responses]
@@ -150,7 +146,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_model_name = "meta
             ]
             all_prompts.extend(interviewer_prompts) # TEMP LINE (DELETE LATER)
 
-            interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, interviewer_model, interviewer_tokenizer)
+            interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, model, tokenizer)
             all_responses.extend(interviewer_responses) # TEMP LINE (DELETE LATER)
             interviewer_questions = [extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}" for response in interviewer_responses]
             gc.collect()
@@ -166,7 +162,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_model_name = "meta
             ]
             
             all_prompts.extend(specific_info_item_prompts) # TEMP LINE (DELETE LATER)
-            interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, source_model, source_tokenizer)
+            interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, model, tokenizer)
             all_responses.extend(interviewee_specific_item_responses) # TEMP LINE (DELETE LATER)
            
             specific_info_items = [
@@ -186,7 +182,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_model_name = "meta
             ]
             
             all_prompts.extend(source_prompts) # TEMP LINE (DELETE LATER)
-            interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, source_model, source_tokenizer)
+            interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
             all_responses.extend(interviewee_responses) # TEMP LINE (DELETE LATER)
             
             interviewee_answers = [extract_text_inside_brackets(response) for response in interviewee_responses]
@@ -203,7 +199,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_model_name = "meta
         ]
         
         all_prompts.extend(interviewer_ending_prompts) # TEMP LINE (DELETE LATER)
-        ending_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_ending_prompts, interviewer_model, interviewer_tokenizer)
+        ending_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_ending_prompts, model, tokenizer)
         all_responses.extend(ending_interviewer_responses) # TEMP LINE (DELETE LATER)
        
         ending_interviewer_questions = [
@@ -221,7 +217,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_model_name = "meta
         ]
      
         all_prompts.extend(ending_source_prompts) # TEMP LINE (DELETE LATER)
-        ending_interviewee_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, source_model, source_tokenizer)
+        ending_interviewee_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, model, tokenizer)
         all_responses.extend(ending_interviewee_responses) # TEMP LINE (DELETE LATER)
       
         ending_interviewee_answers = [extract_text_inside_brackets(response) for response in ending_interviewee_responses]

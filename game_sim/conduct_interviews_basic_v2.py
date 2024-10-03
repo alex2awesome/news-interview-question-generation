@@ -7,7 +7,6 @@ from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 import gc
 import torch
-import math
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
@@ -83,7 +82,7 @@ def log_gpu_memory():
     for i in range(torch.cuda.device_count()):
         print(f"GPU {i}: {torch.cuda.memory_allocated(i) / 1e9} GB allocated")
 
-def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straightforward", interviewer_model_name="meta-llama/Meta-Llama-3-70B-Instruct", source_model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_basic"):
+def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straightforward", interviewer_model_name="meta-llama/Meta-Llama-3-70B-Instruct", source_model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=2, output_dir="output_results/game_sim/conducted_interviews_basic"):
     os.makedirs(output_dir, exist_ok=True)
     
     num_samples = len(df)
@@ -175,6 +174,10 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
                 extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No information items align with the question"
                 for response in interviewee_specific_item_responses
                 ]
+
+                for idx, specific_item in enumerate(specific_info_items):
+                    info_item_numbers = extract_information_item_numbers(specific_item)
+                    unique_info_items_sets[start_idx + idx].update(info_item_numbers)
                 
                 source_prompts = [
                     get_source_prompt_basic(current_conversation, info_item_list, specific_info_item, "honest")
@@ -190,10 +193,6 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
                 f"{ch}\nInterviewee: {response}"
                 for ch, response in zip(current_conversations[start_idx:end_idx], source_answers)
             ]
-
-            for idx, specific_item in enumerate(source_answers):
-                info_item_numbers = extract_information_item_numbers(specific_item)
-                unique_info_items_sets[start_idx + idx].update(info_item_numbers)
 
         del source_model
         gc.collect()
@@ -229,10 +228,10 @@ if __name__ == "__main__":
     project_root = find_project_root(current_path, 'news-interview-question-generation')
     dataset_path = os.path.join(project_root, "output_results/game_sim/outlines/final_df_with_outlines.csv")
     df = pd.read_csv(dataset_path)
-    df = df.head(10)
+    df = df.head(4)
     print(df)
 
-    num_turns = 8
+    num_turns = 2
     simulated_interviews = conduct_basic_interviews_batch(num_turns, 
                                                           df, 
                                                           interviewer_model_name="meta-llama/Meta-Llama-3-8B-Instruct", 

@@ -9,6 +9,8 @@ import json
 import os
 import torch
 import pandas as pd
+import torch.distributed as dist
+
 
 # ------------- LLM section ------------- #
 
@@ -26,6 +28,7 @@ def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     hf_home = setup_hf_env()
     torch.cuda.empty_cache()
     torch.cuda.memory_summary(device=None, abbreviated=False)
+
     model = LLM(
         model_name,
         dtype=torch.float16,
@@ -33,6 +36,12 @@ def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
         download_dir=hf_home,
         enforce_eager=True
     )
+
+    memory_allocated = torch.cuda.memory_allocated()
+    memory_reserved = torch.cuda.memory_reserved()
+    
+    print(f"Model {model_name} loaded. Memory Allocated: {memory_allocated / (1024 ** 3):.2f} GB")
+    print(f"Model {model_name} loaded. Memory Reserved: {memory_reserved / (1024 ** 3):.2f} GB")
     return model
 
 def initialize_tokenizer(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
@@ -193,6 +202,32 @@ def find_project_root(current_path, project_dir_name):
         if current_path == parent_dir:
             raise ValueError(f"Project directory '{project_dir_name}' not found.")
         current_path = parent_dir
+
+def calculate_gpt4_cost(prompt_file_path, response_file_path, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    PRICE_PER_1000_PROMPT_TOKENS = 0.00500
+    PRICE_PER_1000_RESPONSE_TOKENS = 0.00500
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    with open(prompt_file_path, 'r') as prompt_file:
+        prompts = prompt_file.readlines()
+
+    with open(response_file_path, 'r') as response_file:
+        responses = response_file.readlines()
+
+    total_prompt_tokens = sum([len(tokenizer.encode(prompt)) for prompt in prompts])
+    total_response_tokens = sum([len(tokenizer.encode(response)) for response in responses])
+
+    prompt_cost = (total_prompt_tokens / 1000) * PRICE_PER_1000_PROMPT_TOKENS
+    response_cost = (total_response_tokens / 1000) * PRICE_PER_1000_RESPONSE_TOKENS
+    total_cost = prompt_cost + response_cost
+
+    print(f"Total Prompt Tokens: {total_prompt_tokens}")
+    print(f"Total Response Tokens: {total_response_tokens}")
+    print(f"Total Prompt Cost: ${prompt_cost:.4f}")
+    print(f"Total Response Cost: ${response_cost:.4f}")
+    print(f"Total Cost: ${total_cost:.4f}")
+
+    return total_prompt_tokens, total_response_tokens, prompt_cost, response_cost, total_cost
 
 if __name__ == "__main__": 
     directory_path = 'output_results/gpt_batching/gpt4o_csv_outputs'

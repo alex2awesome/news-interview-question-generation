@@ -7,7 +7,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, stitch_csv_files
+from helper_functions import load_vllm_model, initialize_tokenizer, stitch_csv_files, find_project_root
 from game_sim_prompts import get_info_items_prompt, get_segmented_info_items_prompt
 
 # ---- single use ---- #
@@ -144,8 +144,10 @@ def process_segmented_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Ins
 
 
 if __name__ == "__main__": 
-    info_item_dataset_file = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/info_items/final_df_with_info_items.csv"
-    df = pd.read_csv(info_item_dataset_file)
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    project_root = find_project_root(current_path, 'news-interview-question-generation')
+    dataset_path = os.path.join(project_root, "output_results/game_sim/info_items/final_df_with_info_items.csv")
+    df = pd.read_csv(dataset_path)
     print(df)
 
     df_with_segmented_info_items = process_segmented_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")

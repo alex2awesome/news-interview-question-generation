@@ -6,7 +6,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets
+from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, find_project_root
 from game_sim_prompts import get_outline_prompt
 
 # ---- single use ---- #
@@ -77,7 +77,9 @@ def process_outlines(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", outp
     return df
 
 if __name__ == "__main__": 
-    dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/game_sim/segmented_info_items/final_df_with_segmented_info_items.csv"
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    project_root = find_project_root(current_path, 'news-interview-question-generation')
+    dataset_path = os.path.join(project_root, "output_results/game_sim/segmented_info_items/final_df_with_segmented_info_items.csv")
     df = pd.read_csv(dataset_path)
     print(df)
 

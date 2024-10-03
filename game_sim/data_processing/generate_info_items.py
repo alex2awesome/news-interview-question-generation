@@ -7,7 +7,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, stitch_csv_files
+from helper_functions import load_vllm_model, initialize_tokenizer, stitch_csv_files, find_project_root
 from game_sim_prompts import get_info_items_prompt
 
 # ---- single use ---- #
@@ -69,13 +69,13 @@ def process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", ou
     tokenizer = initialize_tokenizer(model_name)
 
     for start_idx in range(0, len(df), batch_size):
-        batch = df.iloc[start_idx:start_idx+batch_size]
+        batch = df.iloc[start_idx:start_idx+batch_size].copy()
         transcripts = batch['combined_dialogue']
 
         prompts = [get_info_items_prompt(transcript) for transcript in transcripts]
         batch_responses = generate_vllm_info_items_batch(prompts, model, tokenizer)
         
-        batch.loc[:, 'info_items'] = batch_responses
+        batch['info_items'] = batch_responses
 
         batch_file_name = f"batch_{start_idx}_to_{min(start_idx + batch_size, len(df))}_info_item.csv"
         batch_file_path = os.path.join(output_dir, batch_file_name)
@@ -85,10 +85,12 @@ def process_info_items(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", ou
     return final_df
 
 if __name__ == "__main__": 
-    final_dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/final_dataset.csv"
-    df = pd.read_csv(final_dataset_path)
-    df = df.head(10)
-    print(df)
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    project_root = find_project_root(current_path, 'news-interview-question-generation')
+    dataset_path = os.path.join(project_root, "dataset/final_dataset.csv")
+    df = pd.read_csv(dataset_path)
+    sampled_df = df.sample(n=500, random_state=42)
+    print(sampled_df)
 
-    df_with_info_items = process_info_items(df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    df_with_info_items = process_info_items(sampled_df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
     print(df_with_info_items)

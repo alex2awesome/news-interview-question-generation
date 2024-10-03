@@ -13,6 +13,7 @@ import gc
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files
 from game_sim.game_sim_prompts import get_source_prompt_intermediate, get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_item_prompt, get_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
+os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 # ---- batch use ---- #
 def vllm_infer_batch(messages_batch, model, tokenizer):
@@ -91,6 +92,9 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
     unique_info_item_counts = [0] * num_samples
     total_info_item_counts = [0] * num_samples
 
+    persona_types = ["avoidant", "defensive", "straightforward", 
+                     "poor explainer", "dominating", "clueless"]
+
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
         batch_df = df.iloc[start_idx:end_idx]
@@ -103,6 +107,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
         total_segments_counts = []
         extracted_segments_sets = [set() for _ in range(end_idx - start_idx)]
         used_segments_dicts = [{} for _ in range(end_idx - start_idx)]
+        personas = [random.choice(persona_types) for _ in range(end_idx - start_idx)]
         
         for segmented_items in batch_df['segmented_info_items']:
             segmented_dict = ast.literal_eval(segmented_items)
@@ -126,8 +131,8 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
         ]
 
         starting_source_prompts = [
-            get_source_starting_prompt(current_conversation, info_item_list)
-            for current_conversation, info_item_list in zip(current_conversations, info_items)
+            get_source_starting_prompt(current_conversation, info_item_list, persona)
+            for current_conversation, info_item_list, persona in zip(current_conversations, info_items, personas)
         ]
         starting_interviewee_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
         starting_interviewee_answers = [extract_text_inside_brackets(response) for response in starting_interviewee_responses]
@@ -205,8 +210,8 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
         ]
 
         ending_source_prompts = [
-            get_source_ending_prompt(current_conversation, info_item_list)
-            for current_conversation, info_item_list in zip(current_conversations, info_items)
+            get_source_ending_prompt(current_conversation, info_item_list, persona)
+            for current_conversation, info_item_list, persona in zip(current_conversations, info_items, personas)
         ]
         ending_interviewee_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, model, tokenizer)
         ending_interviewee_answers = [extract_text_inside_brackets(response) for response in ending_interviewee_responses]

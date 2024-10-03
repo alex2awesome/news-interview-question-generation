@@ -183,8 +183,8 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
             gc.collect()
 
             source_prompts = [
-                get_source_prompt_intermediate(current_conversation, info_item_list, random_segment, "honest")
-                for current_conversation, info_item_list, random_segment in zip(current_conversations, info_items, random_segments)
+                get_source_prompt_intermediate(current_conversation, info_item_list, random_segment, persona)
+                for current_conversation, info_item_list, random_segment, persona in zip(current_conversations, info_items, random_segments, personas)
             ]
             interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
             interviewee_answers = [extract_text_inside_brackets(response) for response in interviewee_responses]

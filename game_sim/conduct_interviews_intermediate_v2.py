@@ -1,4 +1,4 @@
-# conduct_interviews_basic_v2.py
+# conduct_interviews_intermediate_v2.py
 import os
 import sys
 import re
@@ -6,6 +6,8 @@ import pandas as pd
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 import gc
+import random
+import ast
 import torch
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -82,19 +84,63 @@ def log_gpu_memory():
     for i in range(torch.cuda.device_count()):
         print(f"GPU {i}: {torch.cuda.memory_allocated(i) / 1e9} GB allocated")
 
-def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straightforward", interviewer_model_name="meta-llama/Meta-Llama-3-70B-Instruct", source_model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=2, output_dir="output_results/game_sim/conducted_interviews_basic"):
+def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, max_segments=None):
+    try:
+        segmented_info_items = ast.literal_eval(segmented_info_items_str)
+    except:
+        return "Error: Unable to parse segmented info items.", used_segments_dict
+
+    item_number = int(re.search(r'#(\d+)', chosen_info_item).group(1))
+    item_key = f"Information item #{item_number}"
+
+    if item_key not in segmented_info_items:
+        return "No segments found for this information item.", used_segments_dict
+
+    segments = segmented_info_items[item_key]
+
+    if item_key not in used_segments_dict:
+        used_segments_dict[item_key] = set()
+
+    available_segments = [seg for i, seg in enumerate(segments) if i not in used_segments_dict[item_key]]
+
+    if not available_segments:
+        return "All segments for this item have been used.", used_segments_dict
+
+    if max_segments is None or max_segments > len(available_segments):
+        max_segments = len(available_segments)
+
+    num_segments_to_return = random.randint(1, max_segments)
+    selected_segments = random.sample(available_segments, num_segments_to_return)
+
+    for seg in selected_segments:
+        used_segments_dict[item_key].add(segments.index(seg))
+
+    formatted_segments = "\n".join(f"- {segment}" for segment in selected_segments)
+    return formatted_segments, used_segments_dict
+
+def conduct_intermediate_interviews_batch(num_turns, df, interviewer_strategy="straightforward", interviewer_model_name="meta-llama/Meta-Llama-3-70B-Instruct", source_model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_basic"):
     os.makedirs(output_dir, exist_ok=True)
     
     num_samples = len(df)
     unique_info_item_counts = [0] * num_samples
     total_info_item_counts = [count_information_items(info_item) for info_item in df['info_items']]
-
-    all_prompts = [] # TEMP LINE (DELETE LATER)
-    all_responses = [] # TEMP LINE (DELETE LATER)
-
+    
     current_conversations = [""] * num_samples
     unique_info_items_sets = [set() for _ in range(num_samples)]
-
+    
+    extracted_segments_sets = [set() for _ in range(num_samples)]
+    used_segments_dicts = [{} for _ in range(num_samples)]
+    total_segments_counts = [0] * num_samples
+    
+    for idx, segmented_items in enumerate(df['segmented_info_items']):
+        segmented_dict = ast.literal_eval(segmented_items)
+        total_segments = sum(len(segments) for segments in segmented_dict.values())
+        total_segments_counts[idx] = total_segments
+    
+    persona_types = ["avoidant", "defensive", "straightforward", 
+                     "poor explainer", "dominating", "clueless"]
+    personas = [random.choice(persona_types) for _ in range(num_samples)]
+    
     for turn in range(num_turns):
         #### Interviewer
         print(f"Turn {turn + 1}: Generating interviewer questions")
@@ -106,7 +152,6 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
             batch_df = df.iloc[start_idx:end_idx].copy()
             outlines = batch_df['outlines']
 
-            
             if turn == 0: 
                 interviewer_prompts = [
                     get_interviewer_starting_prompt(outline, interviewer_strategy)
@@ -123,9 +168,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
                     for current_conversation, outline in zip(current_conversations[start_idx:end_idx], outlines)
                 ]
 
-            all_prompts.extend(interviewer_prompts) # TEMP LINE (DELETE LATER)
             interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, interviewer_model, interviewer_tokenizer)
-            all_responses.extend(interviewer_responses) # TEMP LINE (DELETE LATER)
 
             interviewer_questions = [
                 extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
@@ -150,14 +193,14 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
             info_items = batch_df['info_items']
 
             if turn == 0:
-                source_prompts = [
-                    get_source_starting_prompt(current_conversation, info_item_list)
-                    for current_conversation, info_item_list in zip(current_conversations[start_idx:end_idx], info_items)
+                starting_source_prompts = [
+                    get_source_starting_prompt(current_conversation, info_item_list, persona)
+                    for current_conversation, info_item_list, persona in zip(current_conversations, info_items, personas)
                 ]
             elif turn == num_turns - 1:
-                source_prompts = [
-                    get_source_ending_prompt(current_conversation, info_item_list)
-                    for current_conversation, info_item_list in zip(current_conversations, info_items)
+                ending_source_prompts = [
+                    get_source_ending_prompt(current_conversation, info_item_list, persona)
+                    for current_conversation, info_item_list, persona in zip(current_conversations, info_items, personas)
                 ]
             else:
                 specific_info_item_prompts = [
@@ -165,27 +208,34 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
                     for current_conversation, info_item_list in zip(current_conversations[start_idx:end_idx], info_items)
                 ]
 
-                all_prompts.extend(specific_info_item_prompts) # TEMP LINE (DELETE LATER)
                 interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, source_model, source_tokenizer)
-                all_responses.extend(interviewee_specific_item_responses) # TEMP LINE (DELETE LATER)
 
                 specific_info_items = [
                 extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No information items align with the question"
                 for response in interviewee_specific_item_responses
                 ]
-
-                for idx, specific_item in enumerate(specific_info_items):
+                
+                random_segments = []
+                for idx, (specific_item, segmented_items) in enumerate(zip(specific_info_items, batch_df['segmented_info_items'])):
                     info_item_numbers = extract_information_item_numbers(specific_item)
                     unique_info_items_sets[start_idx + idx].update(info_item_numbers)
+                    
+                    if info_item_numbers:
+                        chosen_item = f"Information Item #{info_item_numbers[0]}"
+                        segments, used_segments_dicts[start_idx + idx] = get_random_segments(segmented_items, chosen_item, used_segments_dicts[idx])
+                        extracted_segments_sets[start_idx + idx].update([seg.strip() for seg in segments.split('\n') if seg.strip()])
+                    else:
+                        segments = "No specific information item was chosen."
+                    random_segments.append(segments)
+
+                gc.collect()
                 
                 source_prompts = [
-                    get_source_prompt_basic(current_conversation, info_item_list, specific_info_item, "honest")
-                    for current_conversation, info_item_list, specific_info_item in zip(current_conversations[start_idx:end_idx], info_items, specific_info_items)
+                    get_source_prompt_basic(current_conversation, info_item_list, specific_info_item, persona)
+                    for current_conversation, info_item_list, specific_info_item, persona in zip(current_conversations[start_idx:end_idx], info_items, specific_info_items, personas)
                 ]
 
-            all_prompts.extend(source_prompts) # TEMP LINE (DELETE LATER)
             source_responses = generate_vllm_SOURCE_response_batch(source_prompts, source_model, source_tokenizer)
-            all_responses.extend(source_responses) # TEMP LINE (DELETE LATER)
 
             source_answers = [extract_text_inside_brackets(response) for response in source_responses]
             current_conversations[start_idx:end_idx] = [
@@ -197,6 +247,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
         gc.collect()
 
     unique_info_item_counts = [len(info_set) for info_set in unique_info_items_sets]
+    extracted_segments_counts = [len(extracted_set) for extracted_set in extracted_segments_sets]
 
     output_df = pd.DataFrame({
         'id': df['id'],
@@ -205,20 +256,14 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
         'outlines': df['outlines'],
         'final_conversations': current_conversations,
         'total_info_items_extracted': unique_info_item_counts,  # unique info items extracted by interviewer
-        'total_info_item_count': total_info_item_counts  # total info items the source has
+        'total_info_item_count': total_info_item_counts,  # total info items the source has
+        'total_segments_counts': total_segments_counts,  # total segments in each info item
+        'extracted_segments_counts': extracted_segments_counts  # segments used
     })
 
-    output_file_name = os.path.join(output_dir, 'all_basic_interviews_conducted_v2.csv')
+    output_file_name = os.path.join(output_dir, 'all_intermediate_interviews_conducted_v2.csv')
     output_df.to_csv(output_file_name, index=False)
     print(f"All interviews saved to {output_file_name}")
-
-    with open(os.path.join(output_dir, "all_prompts_v2.txt"), "w") as prompt_file: # TEMP LINE (DELETE LATER)
-        for prompt in all_prompts: # TEMP LINE (DELETE LATER)
-            prompt_file.write(prompt + "\n") # TEMP LINE (DELETE LATER)
-
-    with open(os.path.join(output_dir, "all_responses_v2.txt"), "w") as response_file: # TEMP LINE (DELETE LATER)
-        for response in all_responses: # TEMP LINE (DELETE LATER)
-            response_file.write(response + "\n") # TEMP LINE (DELETE LATER)
 
     return output_df
 
@@ -227,14 +272,15 @@ if __name__ == "__main__":
     project_root = find_project_root(current_path, 'news-interview-question-generation')
     dataset_path = os.path.join(project_root, "output_results/game_sim/outlines/final_df_with_outlines.csv")
     df = pd.read_csv(dataset_path)
-    df = df.head(4)
+    df = df.head(3)
     print(df)
 
-    num_turns = 2
-    simulated_interviews = conduct_basic_interviews_batch(num_turns, 
+    num_turns = 4
+    simulated_interviews = conduct_intermediate_interviews_batch(num_turns, 
                                                           df, 
                                                           interviewer_model_name="meta-llama/Meta-Llama-3-8B-Instruct", 
                                                           source_model_name="meta-llama/Meta-Llama-3-8B-Instruct",
+                                                          batch_size=5,
                                                           output_dir="output_results/game_sim/conducted_interviews_basic/interviewer-8B-vs-source-8B")
     print(simulated_interviews)
     print(simulated_interviews['final_conversations'].iloc[0])

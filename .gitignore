@@ -1,3 +1,5 @@
+.DS_Store
+
 # Excel files
 *.xls
 *.xlsx

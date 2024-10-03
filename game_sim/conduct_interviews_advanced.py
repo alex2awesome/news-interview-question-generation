@@ -310,21 +310,161 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
     final_df = stitch_csv_files(output_dir, 'all_advanced_interviews_conducted.csv')
     return final_df
 
+def conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
+    os.makedirs(output_dir, exist_ok=True)
+    role = input("Would you like to play as the interviewer (A) or source (B)? Please type 'A' or 'B': ").upper()
+    while role not in ["A", "B"]:
+        print("Invalid input. Please type 'A' for interviewer or 'B' for source.")
+        role = input("Please type 'A' or 'B': ").upper()
+    role = "interviewer" if role == "A" else "source"
+
+    model = load_vllm_model(model_name)
+    tokenizer = initialize_tokenizer(model_name)
+
+    sample = df.iloc[0]
+    info_items = sample['info_items']
+    outline = sample['outlines']
+    segmented_info_items = ast.literal_eval(sample['segmented_info_items'])
+
+    current_conversation = ""
+    unique_info_items_set = set()
+    used_segments_dict = {}
+    persona_types = ["avoidant", "defensive", "straightforward", "poor explainer", "dominating", "clueless"]
+    persona = random.choice(persona_types)
+
+    total_info_item_count = count_information_items(info_items)
+    total_segments_count = sum(len(segments) for segments in segmented_info_items.values())
+    extracted_segments_set = set()
+
+    #### 1. FIRST interviewer question and source answer
+    if role == "interviewer":
+        interviewer_prompt = get_interviewer_starting_prompt(outline, num_turns, "straightforward")
+        print(f"\n{interviewer_prompt}")
+        human_question = input("Interviewer: ")
+        current_conversation = f"Interviewer: {human_question}"
+        
+        starting_source_prompt = get_source_starting_prompt(current_conversation, info_items, persona)
+        source_response = generate_vllm_SOURCE_response_batch([starting_source_prompt], model, tokenizer)
+        source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
+        current_conversation += f"\nInterviewee: {source_answer}"
+        print(f"Interviewee (LLM): {source_answer}")
+    else:
+        starting_interviewer_prompt = get_interviewer_starting_prompt(outline, num_turns, "straightforward")
+        interviewer_response = generate_vllm_INTERVIEWER_response_batch([starting_interviewer_prompt], model, tokenizer)
+        interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
+        current_conversation = f"Interviewer: {interviewer_question}"
+        print(f"Interviewer (LLM): {interviewer_question}")
+        
+        source_prompt = get_source_starting_prompt(current_conversation, info_items, persona)
+        print(f"\n{source_prompt}")
+        human_answer = input("Interviewee: ")
+        current_conversation += f"\nInterviewee: {human_answer}"
+
+    #### 2. Middle turns
+    for turn in range(num_turns - 2):
+        num_turns_left = num_turns - (2 + turn)
+
+        if role == "interviewer":
+            interviewer_prompt = get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
+            print(f"\n{interviewer_prompt}")
+            human_question = input("\nYour question (Interviewer): ")
+            current_conversation += f"\nInterviewer: {human_question}"
+
+            specific_info_item_prompt = get_source_specific_info_item_prompt(current_conversation, info_items)
+            specific_info_item_response = generate_vllm_SOURCE_response_batch([specific_info_item_prompt], model, tokenizer)
+            specific_info_item = extract_text_inside_brackets(specific_info_item_response[0]) or "No information items align with the question"
+
+            persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona)
+            persuasion_level_response = generate_vllm_SOURCE_response_batch([persuasion_level_prompt], model, tokenizer)
+            persuasion_level = extract_text_inside_brackets(persuasion_level_response[0]) or "0"
+
+            info_item_numbers = extract_information_item_numbers(specific_info_item)
+            unique_info_items_set.update(info_item_numbers)
+            
+            if info_item_numbers:
+                chosen_item = f"Information Item #{info_item_numbers[0]}"
+                persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
+                segments, used_segments_dict = get_random_segments(segmented_info_items, chosen_item, used_segments_dict, persona, persuasion_level_int)
+                extracted_segments_set.update([seg.strip() for seg in segments.split('\n') if seg.strip()])
+            else:
+                segments = "No specific information item was chosen."
+
+            source_prompt = get_advanced_source_persona_prompt(current_conversation, info_items, segments, persona)
+            source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
+            source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
+            current_conversation += f"\nInterviewee: {source_answer}"
+            print(f"Interviewee (LLM): {source_answer}")
+        else:
+            interviewer_prompt = get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
+            interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
+            interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
+            current_conversation += f"\nInterviewer: {interviewer_question}"
+            print(f"Interviewer (LLM): {interviewer_question}")
+
+            source_prompt = get_advanced_source_persona_prompt(current_conversation, info_items, None, persona)
+            print(f"\n{source_prompt}")
+            human_answer = input("Interviewee: ")
+            current_conversation += f"\nInterviewee: {human_answer}"
+
+    #### 3. FINAL interviewer question and source answer
+    if role == "interviewer":
+        interviewer_prompt = get_interviewer_ending_prompt(current_conversation, outline, "straightforward")
+        print(f"\n{interviewer_prompt}")
+        human_question = input("\nYour final remark (Interviewer): ")
+        current_conversation += f"\nInterviewer: {human_question}"
+
+        source_prompt = get_source_ending_prompt(current_conversation, info_items, persona)
+        source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
+        source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
+        current_conversation += f"\nInterviewee: {source_answer}"
+        print(f"Interviewee (LLM): {source_answer}")
+    else:
+        interviewer_prompt = get_interviewer_ending_prompt(current_conversation, outline, "straightforward")
+        interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
+        interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
+        current_conversation += f"\nInterviewer: {interviewer_question}"
+        print(f"Interviewer (LLM): {interviewer_question}")
+
+        source_prompt = get_source_ending_prompt(current_conversation, info_items, persona)
+        print(f"\n{source_prompt}")
+        human_answer = input("Interviewee: ")
+        current_conversation += f"\nInterviewee: {human_answer}"
+
+    print("\nFinal Interview Conversation:")
+    print(current_conversation)
+
+    output_df = pd.DataFrame({
+        'final_conversation': [current_conversation],
+        'total_info_items_extracted': [len(unique_info_items_set)],
+        'total_info_item_count': [total_info_item_count],
+        'extracted_segments_count': [len(extracted_segments_set)],
+        'total_segments_count': [total_segments_count]
+    })
+
+    output_path = os.path.join(output_dir, f"human_{role}_vs_LLM.csv")
+    output_df.to_csv(output_path, index=False)
+    print(f"Interview saved to {output_path}")
+
+    return output_df
+
 if __name__ == "__main__":
     current_path = os.path.dirname(os.path.abspath(__file__))
     project_root = find_project_root(current_path, 'news-interview-question-generation')
-    dataset_path = os.path.join(project_root, "news-interview-question-generation/output_results/game_sim/outlines/final_df_with_outlines.csv")
+    dataset_path = os.path.join(project_root, "output_results/game_sim/outlines/final_df_with_outlines.csv")
     df = pd.read_csv(dataset_path)
     df = df.head(10)
     print(df)
     # df has columns info_items and outlines
     num_turns = 8
-    simulated_interviews = conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    # simulated_interviews = conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
     
-    print(f"dataset with simulated interviews: {simulated_interviews}\n")
-    for i, interview in enumerate(simulated_interviews['final_conversations']):
-        print(f"Interview {i+1}:\n {interview}\n\n\n")
+    # print(f"dataset with simulated interviews: {simulated_interviews}\n")
+    # for i, interview in enumerate(simulated_interviews['final_conversations']):
+    #     print(f"Interview {i+1}:\n {interview}\n\n\n")
 
+    # HUMAN EVAL:
+    human_eval = conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    print(human_eval)
 '''
 from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.
 column structure of the database outputted:

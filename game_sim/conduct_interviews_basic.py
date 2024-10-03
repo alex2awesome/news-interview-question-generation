@@ -106,7 +106,7 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
         #### 1. Handle the FIRST interviewer question and source answer outside the loop
         # First interviewer question (starting prompt)
         starting_interviewer_prompts = [
-            get_interviewer_starting_prompt(outline, "straightforward")
+            get_interviewer_starting_prompt(outline, num_turns, "straightforward")
             for outline in outlines
         ]
 

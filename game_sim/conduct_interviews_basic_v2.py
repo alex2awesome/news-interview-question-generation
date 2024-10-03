@@ -106,10 +106,9 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
             batch_df = df.iloc[start_idx:end_idx].copy()
             outlines = batch_df['outlines']
 
-            
             if turn == 0: 
                 interviewer_prompts = [
-                    get_interviewer_starting_prompt(outline, interviewer_strategy)
+                    get_interviewer_starting_prompt(outline, num_turns, interviewer_strategy)
                     for outline in outlines
                 ]
             elif turn == num_turns - 1:

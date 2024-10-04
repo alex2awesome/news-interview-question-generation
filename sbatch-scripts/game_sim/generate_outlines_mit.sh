@@ -14,4 +14,4 @@ source env_setup.sh
 
 export OMP_NUM_THREADS=50
 
-python -m game_sim.conduct_interviews_basic_v2
+python -m game_sim.data_processing.generate_outlines

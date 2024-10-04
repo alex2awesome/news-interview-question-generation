@@ -221,15 +221,12 @@ def get_advanced_source_persona_prompt(QA_Sequence, info_items, specific_info_it
         - If persuaded, you are more likely to provide more detailed information (e.g., sharing additional segments from the specific information item).
         - If not persuaded, continue responding in line with your persona (e.g., avoidant, defensive, etc).
 
-    ### Important: Wrap your final response in brackets so it can be parsed.
-
-        {persona_few_shot_examples}
-
-    Please use this specific piece of information as a base, and pair it with your {persona} persona to craft your response: 
+    Please use the following information, and pair it with your {persona} persona to craft your response: 
         {specific_info_item} 
     
-    Now, based on your persona and the specific information provided, please respond using the following format:
-        **Wrap your response in brackets**, like this: [<your response>]
+    Here are some examples:
+        {persona_few_shot_examples}
+    ### Important: Wrap your final response to the interviewer's question in brackets so it can be parsed. (e.g. [Great question, the current state of Congress is ...])
     '''
     return prompt
 
@@ -271,7 +268,6 @@ def get_source_specific_info_item_prompt(QA_Sequence, info_items):
     {QA_Sequence}
 
     Decide if any of the information items answer the last question posed by the interviewer. If so, return which information item you think best aligns with the question in brackets. 
-    If the question doesn't align with any of the information items you have, don't respond in brackets. 
 
     Here are some examples of correct responses:
 
@@ -369,7 +365,7 @@ def get_source_starting_prompt(QA_Sequence, info_items, persona="straightforward
     {QA_Sequence}
 
     It's the beginning of the interview. Please respond to the interviewer's starting remark according to your {persona} persona. 
-    Make sure to write your final response inside brackets. Below are some examples, and your response should follow its format:
+    Make sure to write your final response inside brackets. Below are some examples, and your response should follow its format: (e.g., [<response>])
 
     Example 1:
         Here is my response to the starting remark:
@@ -581,7 +577,7 @@ The format of your response should be in this sequence:
   3. In other words, place the entire outline you generate in brackets: 
     ie. Here is the format of the generated outline: 
         [
-            introductory blurb of the source
+            Insert introductory blurb here with background information of the source.
 
             - Objective/Theme 1
             - Objective/Theme 2
@@ -602,9 +598,7 @@ def get_outline_prompt(QA_Sequence):
 
     {QA_Sequence}
 
-    Please generate the tailored outline in brackets based on this transcript.
-
-
+    Please generate the tailored outline in brackets based on this transcript:
     '''
     return prompt
 
@@ -627,16 +621,36 @@ def get_info_items_prompt(QA_Sequence):
 
 def get_segmented_info_items_prompt(QA_Sequence, info_item):
     prompt = f'''
-    
-    Below is the interview transcript:
+    Below is an interview transcript:
 
     {QA_Sequence}
-    
+
     Here is one of the key information items extracted from this interview:
-    
+
     {info_item}
 
-    Generate detailed segments of information for this info item, providing at least 3 segments, each expanding on different aspects of the information. Each segment should be a potential talking point in an interview.
+    Please segment the information item into at least **three detailed segments**, each expanding on different aspects of the information. Each segment should be a potential talking point in an interview.
+
+    **Provide the segments in the following format:**
+
+    Segment 1:
+    Title: [A short title summarizing the segment]
+    Content: [A detailed explanation of this aspect]
+
+    Segment 2:
+    Title: [A short title summarizing the segment]
+    Content: [A detailed explanation of this aspect]
+
+    Segment 3:
+    Title: [A short title summarizing the segment]
+    Content: [A detailed explanation of this aspect]
+
+    **Ensure that:**
+    - Each segment is numbered and follows the exact format.
+    - The titles are concise and descriptive.
+    - The content provides depth and clarity on the aspect.
+
+    Please proceed to provide the segmented information item now.
     '''
     return prompt
 

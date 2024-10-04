@@ -178,7 +178,7 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
 
             source_prompts = [
                 get_source_prompt_basic(current_conversation, info_item_list, specific_info_item, "honest")
-                for current_conversation, info_item_list, specific_info_item in zip(current_conversations[start_idx:end_idx], info_items, specific_info_items)
+                for current_conversation, info_item_list, specific_info_item in zip(current_conversations, info_items, specific_info_items)
             ]
             
             all_prompts.extend(source_prompts) # TEMP LINE (DELETE LATER)

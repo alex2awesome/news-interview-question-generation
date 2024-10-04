@@ -577,11 +577,12 @@ The format of your response should be in this sequence:
   3. In other words, place the entire outline you generate in brackets: 
     ie. Here is the format of the generated outline: 
         [
-            Insert introductory blurb here with background information of the source.
+            Who is getting interviewered? Please introduce the source being interviewed (name, expert in what field, etc).
+            Then, give a brief background summary of the interview topic.
 
-            - Objective/Theme 1
-            - Objective/Theme 2
-            - Objective/Theme 3
+            - Objective/Theme 1:
+            - Objective/Theme 2:
+            - Objective/Theme 3:
             ...
         ]
 '''
@@ -621,38 +622,53 @@ def get_info_items_prompt(QA_Sequence):
 
 def get_segmented_info_items_prompt(QA_Sequence, info_item):
     prompt = f'''
-    Below is an interview transcript:
+    
+    Below is the interview transcript:
 
     {QA_Sequence}
-
+    
     Here is one of the key information items extracted from this interview:
-
+    
     {info_item}
 
-    Please segment the information item into at least **three detailed segments**, each expanding on different aspects of the information. Each segment should be a potential talking point in an interview.
-
-    **Provide the segments in the following format:**
-
-    Segment 1:
-    Title: [A short title summarizing the segment]
-    Content: [A detailed explanation of this aspect]
-
-    Segment 2:
-    Title: [A short title summarizing the segment]
-    Content: [A detailed explanation of this aspect]
-
-    Segment 3:
-    Title: [A short title summarizing the segment]
-    Content: [A detailed explanation of this aspect]
-
-    **Ensure that:**
-    - Each segment is numbered and follows the exact format.
-    - The titles are concise and descriptive.
-    - The content provides depth and clarity on the aspect.
-
-    Please proceed to provide the segmented information item now.
+    Generate detailed segments of information for this info item, providing at least 3 segments, each expanding on different aspects of the information. Each segment should be a potential talking point in an interview.
     '''
     return prompt
+
+# def get_segmented_info_items_prompt(QA_Sequence, info_item):
+#     prompt = f'''
+#     Below is an interview transcript:
+
+#     {QA_Sequence}
+
+#     Here is one of the key information items extracted from this interview:
+
+#     {info_item}
+
+#     Please segment the information item into at least **three detailed segments**, each expanding on different aspects of the information. Each segment should be a potential talking point in an interview.
+
+#     **Provide the segments in the following format:**
+
+#     Segment 1:
+#     Title: [A short title summarizing the segment]
+#     Content: [A detailed explanation of this aspect]
+
+#     Segment 2:
+#     Title: [A short title summarizing the segment]
+#     Content: [A detailed explanation of this aspect]
+
+#     Segment 3:
+#     Title: [A short title summarizing the segment]
+#     Content: [A detailed explanation of this aspect]
+
+#     **Ensure that:**
+#     - Each segment is numbered and follows the exact format.
+#     - The titles are concise and descriptive.
+#     - The content provides depth and clarity on the aspect.
+
+#     Please proceed to provide the segmented information item now.
+#     '''
+#     return prompt
 
 # only for topic-transition extraction
 def get_all_topic_transition_questions_prompt(QA_Sequence, question):

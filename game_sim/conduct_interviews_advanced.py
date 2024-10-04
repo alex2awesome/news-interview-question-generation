@@ -54,6 +54,7 @@ def count_information_items(info_items_text):
 def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, persona, persuasion_level, max_proportion=1.0):
     try:
         segmented_info_items = ast.literal_eval(segmented_info_items_str)
+        # segmented_info_items = json.loads(sample['segmented_info_items'])
     except:
         return "Error: Unable to parse segmented info items.", used_segments_dict
 
@@ -316,12 +317,12 @@ def conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Lla
     while role not in ["A", "B"]:
         role = input("Invalid input. Please type 'A' for interviewer or 'B' for source: ").upper()
     role = "interviewer" if role == "A" else "source"
-    print(f"\nYou've chosen to play as {role}.\n")
+    print(f"\nYou've chosen to play as the {role}.\n")
 
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
 
-    sample = df.iloc[random.randint(0, len(df))]
+    sample = df.iloc[0] # can change this to randomly sample an interview instead
     info_items = sample['info_items']
     outline = sample['outlines']
     segmented_info_items = ast.literal_eval(sample['segmented_info_items'])
@@ -330,8 +331,30 @@ def conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Lla
     unique_info_items_set = set()
     used_segments_dict = {}
     persona_types = ["avoidant", "defensive", "straightforward", "poor explainer", "dominating", "clueless"]
-    persona = random.choice(persona_types)
-    print(f"\nsource persona chosen: {persona}")
+    if role == 'interviewer':
+        print("Please choose a source persona to play against.")
+    else:
+        print("Please choose your source persona.")
+
+    print("Here are your options:")
+    for idx, persona_name in enumerate(persona_types):
+        print(f"{idx + 1}. {persona_name}")
+
+    user_input = input("Pick a persona (please type a number from 1 to 6): ")
+
+    try:
+        index = int(user_input) - 1
+        if 0 <= index < len(persona_types):
+            persona = persona_types[index]
+            print(f"You have selected: {persona}")
+        else:
+            print("Invalid selection. Randomly picking a persona for you.")
+            persona = random.choice(persona_types)
+            print(f"Randomly selected persona: {persona}")
+    except ValueError:
+        print("Invalid input. Randomly picking a persona for you.")
+        persona = random.choice(persona_types)
+        print(f"Randomly selected persona: {persona}")
 
     total_info_item_count = count_information_items(info_items)
     total_segments_count = sum(len(segments) for segments in segmented_info_items.values())
@@ -474,7 +497,7 @@ def conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Lla
     'total_segments_count': [total_segments_count]
     })
 
-    output_path = os.path.join(output_dir, f"human_{role}_vs_LLM_interview_{sample['id'].iloc[0]}.csv")
+    output_path = os.path.join(output_dir, f"human_{role}_vs_LLM_interview_{sample['id']}.csv")
     output_df.to_csv(output_path, index=False)
     print(f"Interview saved to {output_path}")
 
@@ -486,7 +509,7 @@ if __name__ == "__main__":
     dataset_path = os.path.join(project_root, "output_results/game_sim/outlines/final_df_with_outlines.csv")
     df = pd.read_csv(dataset_path)
     df = df.head(10)
-    print(df['segmented_info_items'].iloc[0])
+    print(df)
     # df has columns info_items and outlines
     num_turns = 4
     # simulated_interviews = conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
@@ -496,8 +519,8 @@ if __name__ == "__main__":
     #     print(f"Interview {i+1}:\n {interview}\n\n\n")
 
     # HUMAN EVAL:
-    # human_eval = conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
-    # print(human_eval)
+    human_eval = conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    print(human_eval)
 '''
 from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.
 column structure of the database outputted:

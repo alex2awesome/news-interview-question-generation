@@ -14,8 +14,8 @@ cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 
 source env_setup.sh
 
-conda init bash
-source ~/.bashrc
-conda activate myenv
-
-python -m variations.baseline.baseline_type_classification
+python -m game_sim.data_processing.generate_info_items
+python -m game_sim.data_processing.generate_segmented_info_items
+python -m game_sim.data_processing.generate_outlines
+python -m game_sim.conduct_interviews_basic
+python -m game_sim.conduct_interviews_intermediate

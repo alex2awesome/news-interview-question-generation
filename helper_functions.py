@@ -9,22 +9,26 @@ import json
 import os
 import torch
 import pandas as pd
+import torch.distributed as dist
+
 
 # ------------- LLM section ------------- #
 
 # hugging face environment setup for VLLM functionality
 def setup_hf_env():
-    HF_HOME = "/project/jonmay_231/spangher/huggingface_cache"
-    config_data = json.load(open('/project/jonmay_231/spangher/Projects/news-interview-question-generation/configs/config.json'))
+    dir_of_this_script = os.path.dirname(os.path.abspath(__file__))
+    path_to_config = os.path.join(dir_of_this_script, 'configs', 'config.json')
+    with open(path_to_config, 'r') as config_file:
+        config_data = json.load(config_file)
     os.environ['HF_TOKEN'] = config_data["HF_TOKEN"]
-    os.environ['HF_HOME'] = HF_HOME
-    return HF_HOME
+    return os.getenv('HF_HOME')
 
 # vllm framework model loader
 def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     hf_home = setup_hf_env()
     torch.cuda.empty_cache()
     torch.cuda.memory_summary(device=None, abbreviated=False)
+
     model = LLM(
         model_name,
         dtype=torch.float16,
@@ -32,6 +36,12 @@ def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
         download_dir=hf_home,
         enforce_eager=True
     )
+
+    memory_allocated = torch.cuda.memory_allocated()
+    memory_reserved = torch.cuda.memory_reserved()
+    
+    print(f"Model {model_name} loaded. Memory Allocated: {memory_allocated / (1024 ** 3):.2f} GB")
+    print(f"Model {model_name} loaded. Memory Reserved: {memory_reserved / (1024 ** 3):.2f} GB")
     return model
 
 def initialize_tokenizer(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
@@ -144,10 +154,10 @@ def combine_csv_files(directory_path, output_file_name):
 
 # given "ABC[XYZ]EFG", return "XYZ"
 def extract_text_inside_brackets(text):
-    match = re.search(r'\[(.*?)\]', text)
+    match = re.search(r'\[(.*?)\]', text, re.DOTALL)
     if match:
         return match.group(1)
-    return "No label(s) in brackets"
+    return ""
 
 # given "ABC{XYZ}EFG", return "XYZ"
 def extract_text_inside_parentheses(text):
@@ -156,9 +166,8 @@ def extract_text_inside_parentheses(text):
         return match.group(1)
     return "Error"
 
-def stitch_csv_files(output_dir="output_results", final_output_file="LLM_classified_results_final.csv"):
+def stitch_csv_files(output_dir="output_results", final_output_file="all_results_concatenated.csv"):
     all_files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.csv')]
-    all_files.sort()  # Sort files by name to ensure they are concatenated in the correct order
     
     all_dfs = []
     for file in all_files:
@@ -185,7 +194,42 @@ def price_calculator(tok_count, model='gpt-4o', batch=False):
         return f'total price: ${0.0000025 * tok_count}'
     return f'total price: ${0.000005 * tok_count}'
 
+def find_project_root(current_path, project_dir_name):
+    while True:
+        if project_dir_name in os.listdir(current_path):
+            return os.path.join(current_path, project_dir_name)
+        parent_dir = os.path.dirname(current_path)
+        if current_path == parent_dir:
+            raise ValueError(f"Project directory '{project_dir_name}' not found.")
+        current_path = parent_dir
+
+def calculate_gpt4_cost(prompt_file_path, response_file_path, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+    PRICE_PER_1000_PROMPT_TOKENS = 0.00500
+    PRICE_PER_1000_RESPONSE_TOKENS = 0.00500
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    with open(prompt_file_path, 'r') as prompt_file:
+        prompts = prompt_file.readlines()
+
+    with open(response_file_path, 'r') as response_file:
+        responses = response_file.readlines()
+
+    total_prompt_tokens = sum([len(tokenizer.encode(prompt)) for prompt in prompts])
+    total_response_tokens = sum([len(tokenizer.encode(response)) for response in responses])
+
+    prompt_cost = (total_prompt_tokens / 1000) * PRICE_PER_1000_PROMPT_TOKENS
+    response_cost = (total_response_tokens / 1000) * PRICE_PER_1000_RESPONSE_TOKENS
+    total_cost = prompt_cost + response_cost
+
+    print(f"Total Prompt Tokens: {total_prompt_tokens}")
+    print(f"Total Response Tokens: {total_response_tokens}")
+    print(f"Total Prompt Cost: ${prompt_cost:.4f}")
+    print(f"Total Response Cost: ${response_cost:.4f}")
+    print(f"Total Cost: ${total_cost:.4f}")
+
+    return total_prompt_tokens, total_response_tokens, prompt_cost, response_cost, total_cost
+
 if __name__ == "__main__": 
-    directory_path = 'output_results/vllm_all_questions_classified'
-    output_file = 'output_results/vllm_all_questions_classified/all_interviews_combined.csv'
+    directory_path = 'output_results/gpt_batching/gpt4o_csv_outputs'
+    output_file = 'output_results/gpt_batching/gpt4o_csv_outputs/gpt_all_interviews_combined.csv'
     combine_csv_files(directory_path, output_file)

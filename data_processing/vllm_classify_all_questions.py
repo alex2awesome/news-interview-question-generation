@@ -8,7 +8,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from transformers import AutoTokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, vllm_infer_batch, extract_text_inside_brackets
+from helper_functions import load_vllm_model, vllm_infer_batch, extract_text_inside_brackets, combine_csv_files
 from prompts import get_classify_all_questions_taxonomy_prompt, TAXONOMY
 import logging
 
@@ -72,23 +72,32 @@ def extract_interviewer_questions(utt, speaker):
     min_length = min(len(questions), len(answers))
     questions = questions[:min_length]
     answers = answers[:min_length]
-
+    if len(questions) == 1 or len(answers) == 1 or len(questions) == 0 or len(answers) == 0:
+        return ["bad interview"] * 2, ["bad interview"] * 2
     return questions, answers
 
-# if we want to be randomly sampling, you will have to modify the regex that takes the "NPR-X" from the id because not all values in the id column are of the form "NPR-X"
-def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/vllm_all_questions_classified", num_interviews=150, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+# calculates the diversity ratio of labels in a list of question types, excluding 'starting/ending remarks'
+def calculate_label_diversity(question_types):
+    if len(question_types) <= 4:
+        return 1
+    unique_labels = set(question_types)
+    if "starting/ending remarks" in unique_labels:
+        unique_labels.remove("starting/ending remarks")
+    diversity_ratio = len(unique_labels) / len(question_types) if question_types else 0
+    return diversity_ratio
+
+def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/vllm_all_questions_classified", num_interviews=150, model_name="meta-llama/Meta-Llama-3-70B-Instruct", max_retries=3):
     os.makedirs(output_dir, exist_ok=True)
-    existing_files = [f for f in os.listdir(output_dir) if re.match(r'interview_NPR-(\d+)\.csv', f)]    
+    existing_files = [f for f in os.listdir(output_dir) if re.match(r'interview_[\w-]+\.csv', f)]    
     if existing_files:
-        processed_interview_ids = sorted([int(re.search(r'interview_NPR-(\d+)\.csv', f).group(1)) for f in existing_files])
-        last_processed_id = processed_interview_ids[-1]
+        processed_interview_ids = [re.search(r'interview_([\w-]+)\.csv', f).group(1) for f in existing_files]
         total_len = len(processed_interview_ids)
-        print(f"Total number of interviews already processed out of the original {num_interviews}: {total_len} \nLast processed id: {last_processed_id}. \nResuming starting from the next interview.")
+        print(f"{num_interviews} out of the {total_len} total interviews have already processed out of the original. \nResuming starting from the next interview.")
         num_interviews -= total_len
     else:
         processed_interview_ids = []
-        last_processed_id = None
-        print("no existing interviews found, starting from beginning")
+        print("no interviews have already been processed, starting from beginning")
+    df = df[~df['id'].isin(processed_interview_ids)]
 
     unique_interviews = df['id'].unique()[:num_interviews]
     df = df[df['id'].isin(unique_interviews)]
@@ -97,9 +106,6 @@ def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     for interview_id in unique_interviews:
-        interview_num = int(interview_id.split('-')[1])
-        if last_processed_id is not None and interview_num <= last_processed_id:
-            continue
         try:
             interview_df = df[df['id'] == interview_id]
             interview_df = interview_df.reset_index(drop=True)
@@ -110,7 +116,12 @@ def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects
             combined_dialogue = interview_df['combined_dialogue'].iloc[0]
 
             questions, answers = extract_interviewer_questions(utt, speaker)
-            question_types = classify_question_batch(combined_dialogue, questions, model, tokenizer)
+            for attempt in range(max_retries):
+                question_types = classify_question_batch(combined_dialogue, questions, model, tokenizer)
+                if calculate_label_diversity(question_types) >= 0.10:
+                    break
+                else:
+                    print(f"Low diversity detected for interview {interview_id}. Retrying classification... (Attempt {attempt + 1}/{max_retries})")
             
             interview_data = {
                 'Interview id': [interview_id] + [''] * (len(questions) - 1),
@@ -132,12 +143,15 @@ def classify_each_question(df, output_dir="/project/jonmay_231/spangher/Projects
 
         except Exception as e:
             print(f"Error processing interview {interview_id}: {e}")
-            break
 
     print("All interviews processed and saved.")
 
 if __name__ == "__main__":
     df = pd.read_csv("/project/jonmay_231/spangher/Projects/news-interview-question-generation/dataset/final_dataset.csv")
     print(df)
-    classify_each_question(df, num_interviews=100, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    output_dir="/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/test/vllm_all_questions_classified"
+    classify_each_question(df, output_dir, num_interviews=3, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    directory_path = 'output_results/vllm_all_questions_classified'
+    output_file = 'output_results/test/vllm_all_questions_classified/all_questions_classified.csv'
+    combine_csv_files(output_dir, output_file)
     

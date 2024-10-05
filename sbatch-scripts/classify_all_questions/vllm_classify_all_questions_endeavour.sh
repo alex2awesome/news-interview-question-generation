@@ -2,20 +2,17 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --time=40:00:00
-#SBATCH --gres=gpu:a100:2
-#SBATCH --constraint=a100-80gb
+#SBATCH --gres=gpu:4
 #SBATCH --cpus-per-gpu=10
-#SBATCH --mem=100G
-#SBATCH --partition=gpu
+#SBATCH --mem=400G
+#SBATCH --partition=isi
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=michael.lu@berkeley.edu
 
 cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 
-source env_setup.sh
+# source env_setup.sh
+source /home1/spangher/.bashrc
+conda activate /home1/spangher/miniconda3/envs/vllm-py310
 
-conda init bash
-source ~/.bashrc
-conda activate myenv
-
-python -m variations.baseline.baseline_type_classification
+python -m data_processing.vllm_classify_all_questions

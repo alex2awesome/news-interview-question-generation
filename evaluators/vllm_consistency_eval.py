@@ -8,16 +8,10 @@ from transformers import AutoTokenizer
 import gc
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets
-from prompts import DIMENSION_OF_SIMILARITY_PROMPT
+from prompts import get_consistency_eval_prompt
 
 def consistency_eval_prompt_loader(transcript_context, llm_question, human_question, LLM_question_type, Actual_question_type):
-    prompt = DIMENSION_OF_SIMILARITY_PROMPT.format(
-        transcript_context=transcript_context,
-        LLM_question=llm_question,
-        human_question=human_question,
-        LLM_question_type=LLM_question_type,
-        Actual_question_type=Actual_question_type
-    )
+    prompt = get_consistency_eval_prompt(transcript_context, llm_question, human_question, LLM_question_type, Actual_question_type)
     messages = [
         {"role": "system", "content": "You are an expert at gauging similarity between any two questions."},
         {"role": "user", "content": prompt}
@@ -83,12 +77,61 @@ def consistency_compare_process_dataset(df, output_dir="output_results", batch_s
     print(f"csv file saved to {output_file_path}")
     return df
 
+# ----- For Testing ----- #
+
+# for testing (batching)
+def for_testing_consistency_compare_batch(transcript_contexts, llm_questions, human_questions, LLM_question_types, Actual_question_types, model, tokenizer):
+    messages_batch = [consistency_eval_prompt_loader(context, llm_question, human_question, llm_q_type, human_q_type) for context, llm_question, human_question, llm_q_type, human_q_type in zip(transcript_contexts, llm_questions, human_questions, LLM_question_types, Actual_question_types)]
+    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
+    outputs = vllm_infer_batch(formatted_prompts, model)
+    similarity_scores = [extract_text_inside_brackets(output) for output in outputs]
+    similarity_scores = [
+                            1 if result.lower() in ["similar", "high"]
+                            else 0 if result.lower() in ["different", "not similar", "low"]
+                            else f"Error: {result}"
+                            for result in similarity_scores
+                        ]
+    return similarity_scores, outputs
+
+# adds similarity column to the df
+def for_testing_consistency_compare_process_dataset(df, output_dir="output_results", batch_size=50, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):  
+    classified_similarity_results = []
+    LLM_motivation = []
+
+    model = load_vllm_model(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    for start_idx in range(0, len(df), batch_size):
+        batch = df.iloc[start_idx:start_idx + batch_size]
+
+        QA_Sequences = batch['QA_Sequence']
+        LLM_questions = batch['LLM_Question']
+        Actual_questions = batch['Actual_Question']
+        LLM_question_types = batch['LLM_Question_Type']
+        Actual_question_types = batch['Actual_Question_Type']
+
+        classified_similarities, motivation_responses = for_testing_consistency_compare_batch(QA_Sequences, LLM_questions, Actual_questions, LLM_question_types, Actual_question_types, model, tokenizer)
+        classified_similarity_results.extend(classified_similarities)
+        LLM_motivation.extend(motivation_responses)
+
+        gc.collect()
+    
+    df['Classified_Similarity'] = classified_similarity_results
+    df['LLM Reasoning (Motivation for Classification)'] = LLM_motivation
+
+    output_file_path = os.path.join(output_dir, 'LLM_consistency_eval_results.csv')
+    os.makedirs(output_dir, exist_ok=True)
+    df.to_csv(output_file_path, index=False)
+    print(f"csv file saved to {output_file_path}")
+    return df
+
 if __name__ == "__main__":
-    dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/test/type_classification/LLM_classified_results.csv"
+    dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/CoT_outline/LLM_classified_results.csv"
     df = pd.read_csv(dataset_path)
-    df = df.head(150)
+    df = df.head(50)
     print(df)
-    new_df = consistency_compare_process_dataset(df, output_dir="output_results/test/consistency_eval", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
+
+    new_df = for_testing_consistency_compare_process_dataset(df, output_dir="output_results/test/consistency_eval", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
     print(new_df)
 
     # filtered_df = df[(df["Classified_Similarity"].str.contains("Error", na=False))]

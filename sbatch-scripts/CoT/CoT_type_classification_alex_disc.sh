@@ -5,17 +5,14 @@
 #SBATCH --gres=gpu:a100:2
 #SBATCH --constraint=a100-80gb
 #SBATCH --cpus-per-gpu=10
-#SBATCH --mem=100G
+#SBATCH --mem=200G
 #SBATCH --partition=gpu
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=michael.lu@berkeley.edu
 
 cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 
-source env_setup.sh
+source /home1/spangher/.bashrc
+conda activate vllm-py310
 
-conda init bash
-source ~/.bashrc
-conda activate myenv
-
-python -m variations.baseline.baseline_type_classification
+python -m variations.CoT.CoT_type_classification

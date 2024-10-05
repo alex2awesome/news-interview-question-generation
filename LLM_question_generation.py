@@ -7,7 +7,7 @@ import pandas as pd
 from transformers import AutoTokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets, extract_text_inside_parentheses, create_QA_Sequence_df_N_qa_pairs
-from prompts import BASELINE_LLM_QUESTION_PROMPT
+from prompts import BASELINE_LLM_QUESTION_PROMPT, get_baseline_llm_question_prompt
 import logging
 
 logging.basicConfig(

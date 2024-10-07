@@ -24,8 +24,7 @@ def setup_hf_env():
     return os.getenv('HF_HOME')
 
 # vllm framework model loader
-def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
-    hf_home = setup_hf_env()
+def load_vllm_model(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
     torch.cuda.empty_cache()
     torch.cuda.memory_summary(device=None, abbreviated=False)
 
@@ -33,8 +32,9 @@ def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
         model_name,
         dtype=torch.float16,
         tensor_parallel_size=torch.cuda.device_count(),
-        download_dir=hf_home,
-        enforce_eager=True
+        download_dir=os.environ["HF_HOME"], 
+        enforce_eager=True,
+        max_model_len=60_000
     )
 
     memory_allocated = torch.cuda.memory_allocated()
@@ -44,7 +44,7 @@ def load_vllm_model(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
     print(f"Model {model_name} loaded. Memory Reserved: {memory_reserved / (1024 ** 3):.2f} GB")
     return model
 
-def initialize_tokenizer(model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+def initialize_tokenizer(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     return tokenizer
 
@@ -55,7 +55,7 @@ def vllm_infer_batch(messages_batch, model):
     return [output.outputs[0].text for output in outputs]
 
 # for single-use testing only
-def vllm_infer(messages, model_name="meta-llama/Meta-Llama-3-70B-Instruct"):
+def vllm_infer(messages, model_name="meta-llama/meta-llama-3.1-70b-instruct"):
     model = load_vllm_model(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)

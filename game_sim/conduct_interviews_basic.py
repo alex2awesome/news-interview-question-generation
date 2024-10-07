@@ -3,6 +3,7 @@ import os
 import sys
 import re
 import pandas as pd
+import json
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 import gc
@@ -10,7 +11,15 @@ import torch
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
-from game_sim.game_sim_prompts import get_source_prompt_basic, get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_items_prompt, get_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
+from game_sim.game_sim_prompts import (
+    get_source_prompt_basic, 
+    get_source_starting_prompt, 
+    get_source_ending_prompt, 
+    get_source_specific_info_items_prompt, 
+    get_interviewer_prompt, 
+    get_interviewer_starting_prompt, 
+    get_interviewer_ending_prompt
+)
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 # ---- single use ---- #
@@ -78,14 +87,12 @@ def extract_information_item_numbers(response):
 def count_information_items(info_items_text):
     return len(re.findall(r'(?i)information item #?\d+', info_items_text))
 
-def log_gpu_memory():
-    for i in range(torch.cuda.device_count()):
-        print(f"GPU {i}: {torch.cuda.memory_allocated(i) / 1e9} GB allocated")
-
-def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-Llama-3-70B-Instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_basic"):
+def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straightforward", model_name = "meta-llama/meta-llama-3.1-70b-instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_basic"):
     os.makedirs(output_dir, exist_ok=True)
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
+
+    df['info_items_dict'] = df['info_items_dict'].apply(json.loads)
 
     num_samples = len(df)
     unique_info_item_counts = [0] * num_samples
@@ -94,16 +101,17 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
         batch_df = df.iloc[start_idx:end_idx]
-        info_items = batch_df['info_items']
+        info_items_list = batch_df['info_items']
+        info_items_dict = batch_df['info_items_dict']
         outlines = batch_df['outlines']
         current_conversations = [""] * (end_idx - start_idx)
         unique_info_items_sets = [set() for _ in range(end_idx - start_idx)]
-        total_info_item_counts[start_idx:end_idx] = [count_information_items(info_item) for info_item in info_items]
+        total_info_item_counts[start_idx:end_idx] = [count_information_items(info_items) for info_items in info_items_list]
 
         #### 1. Handle the FIRST interviewer question and source answer outside the loop
         # First interviewer question (starting prompt)
         starting_interviewer_prompts = [
-            get_interviewer_starting_prompt(outline, num_turns, "straightforward")
+            get_interviewer_starting_prompt(outline, num_turns, interviewer_strategy)
             for outline in outlines
         ]
 
@@ -118,8 +126,8 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
         ]
 
         starting_source_prompts = [
-            get_source_starting_prompt(current_conversation, info_item_list)
-            for current_conversation, info_item_list in zip(current_conversations, info_items)
+            get_source_starting_prompt(current_conversation, info_items, "straightforward")
+            for current_conversation, info_items in zip(current_conversations, info_items_list)
         ]
 
         starting_interviewee_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
@@ -132,13 +140,16 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
 
         #### 2. Handle the middle questions/answers within the loop
         for turn in range(num_turns - 2):
+            num_turns_left = num_turns - (1 + turn)
             interviewer_prompts = [
-                get_interviewer_prompt(current_conversation, outline, "straightforward")
+                get_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
                 for current_conversation, outline in zip(current_conversations, outlines)
             ]
-
             interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, model, tokenizer)
-            interviewer_questions = [extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}" for response in interviewer_responses]
+            interviewer_questions = [
+                extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"Answer not in brackets:\n{response}"
+                for response in interviewer_responses
+            ]
             gc.collect()
 
             current_conversations = [
@@ -147,25 +158,40 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
             ]
 
             specific_info_item_prompts = [
-                get_source_specific_info_items_prompt(current_conversation, info_item_list)
-                for current_conversation, info_item_list in zip(current_conversations, info_items)
+                get_source_specific_info_items_prompt(current_conversation, info_items)
+                for current_conversation, info_items in zip(current_conversations, info_items_list)
             ]
             interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, model, tokenizer)
     
-            specific_info_items = [
+            all_relevant_info_items = [
                 extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No information items align with the question"
                 for response in interviewee_specific_item_responses
             ]
 
-            for idx, specific_item in enumerate(specific_info_items):
-                info_item_numbers = extract_information_item_numbers(specific_item)
-                unique_info_items_sets[idx].update(info_item_numbers)
+            selected_info_items_content_list = []
+            for idx, relevant_info_items_str in enumerate(all_relevant_info_items):
+                relevant_info_item_numbers = extract_information_item_numbers(relevant_info_items_str)
+                info_items_dict_sample = info_items_dict.iloc[idx]
+
+                if relevant_info_item_numbers:
+                    selected_info_items_content = []
+                    for num in relevant_info_item_numbers:
+                        key = f"Information item #{num}"
+                        content = info_items_dict_sample.get(key, "")
+                        if content:
+                            selected_info_items_content.append(f"{key}: {content}")
+                        else:
+                            selected_info_items_content.append(f"{key}: [Content not found]")
+                    selected_info_item_str = '\n'.join(selected_info_items_content)
+                    selected_info_items_content_list.append(selected_info_item_str)
+                else:
+                    selected_info_items_content_list.append("No information items align with the question")
 
             gc.collect()
 
             source_prompts = [
-                get_source_prompt_basic(current_conversation, info_item_list, specific_info_item, "honest")
-                for current_conversation, info_item_list, specific_info_item in zip(current_conversations, info_items, specific_info_items)
+                get_source_prompt_basic(current_conversation, selected_info_item_content, "straightforward")
+                for current_conversation, selected_info_item_content in zip(current_conversations, selected_info_items_content_list)
             ]
             
             interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
@@ -181,10 +207,10 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
             get_interviewer_ending_prompt(current_conversation, outline, "straightforward")
             for current_conversation, outline in zip(current_conversations, outlines)
         ]
-        
+
         ending_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_ending_prompts, model, tokenizer)
         ending_interviewer_questions = [
-            extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
+            extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"Answer not in brackets:\n {response}"
             for response in ending_interviewer_responses
         ]
         current_conversations = [
@@ -193,8 +219,8 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
         ]
 
         ending_source_prompts = [
-            get_source_ending_prompt(current_conversation, info_item_list)
-            for current_conversation, info_item_list in zip(current_conversations, info_items)
+            get_source_ending_prompt(current_conversation, "straightforward")
+            for current_conversation in current_conversations
         ]
      
         ending_interviewee_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, model, tokenizer)
@@ -228,14 +254,14 @@ if __name__ == "__main__":
     project_root = find_project_root(current_path, 'news-interview-question-generation')
     dataset_path = os.path.join(project_root, "output_results/game_sim/outlines/final_df_with_outlines.csv")
     df = pd.read_csv(dataset_path)
+    df = df.head(5)
     print(df)
 
     num_turns = 8
     simulated_interviews = conduct_basic_interviews_batch(num_turns, 
-                                                          df, 
-                                                          interviewer_model_name="meta-llama/Meta-Llama-3-8B-Instruct", 
-                                                          source_model_name="meta-llama/Meta-Llama-3-70B-Instruct",
-                                                          output_dir="output_results/game_sim/conducted_interviews_basic/interviewer-8B-vs-source-70B")
+                                                          df,
+                                                          model_name="meta-llama/meta-llama-3.1-8b-instruct",
+                                                          output_dir="output_results/game_sim/conducted_interviews_basic/interviewer-8B-vs-source-8B")
     print(simulated_interviews)
     
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")

@@ -5,6 +5,7 @@ import sys
 import re
 import pandas as pd
 import random
+import json
 import ast
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
@@ -14,7 +15,16 @@ from scipy.stats import beta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
-from game_sim.game_sim_prompts import get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_items_prompt, get_source_persuasion_level_prompt, get_source_persona_prompt_advanced, get_advanced_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
+from game_sim.game_sim_prompts import (
+    get_source_starting_prompt, 
+    get_source_ending_prompt, 
+    get_source_specific_info_items_prompt, 
+    get_source_persuasion_level_prompt, 
+    get_source_persona_prompt_advanced, 
+    get_advanced_interviewer_prompt, 
+    get_interviewer_starting_prompt, 
+    get_interviewer_ending_prompt
+)
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 # ---- batch use ---- #
@@ -51,46 +61,46 @@ def count_information_items(info_items_text):
     return len(re.findall(r'(?i)information item #?\d+', info_items_text))
 
 # select random segments from a specified information item based on persona and persuasion level
-def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, persona, persuasion_level, max_proportion=1.0):
-    try:
-        segmented_info_items = ast.literal_eval(segmented_info_items_str)
-        # segmented_info_items = json.loads(sample['segmented_info_items'])
-    except:
-        return "Error: Unable to parse segmented info items.", used_segments_dict
+# def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, persona, persuasion_level, max_proportion=1.0):
+#     try:
+#         segmented_info_items = ast.literal_eval(segmented_info_items_str)
+#         # segmented_info_items = json.loads(sample['segmented_info_items'])
+#     except:
+#         return "Error: Unable to parse segmented info items.", used_segments_dict
 
-    match = re.search(r'#(\d+)', chosen_info_item)
-    if not match:
-        return "Error: Unable to parse chosen_info_item.", used_segments_dict
-    item_number = int(match.group(1))
-    item_key = f"Information item #{item_number}"
+#     match = re.search(r'#(\d+)', chosen_info_item)
+#     if not match:
+#         return "Error: Unable to parse chosen_info_item.", used_segments_dict
+#     item_number = int(match.group(1))
+#     item_key = f"Information item #{item_number}"
 
-    if item_key not in segmented_info_items:
-        return "No segments found for this information item.", used_segments_dict
+#     if item_key not in segmented_info_items:
+#         return "No segments found for this information item.", used_segments_dict
 
-    segments = segmented_info_items[item_key]
+#     segments = segmented_info_items[item_key]
     
-    if item_key not in used_segments_dict:
-        used_segments_dict[item_key] = set()
+#     if item_key not in used_segments_dict:
+#         used_segments_dict[item_key] = set()
 
-    available_segments = [seg for i, seg in enumerate(segments) if i not in used_segments_dict[item_key]]
+#     available_segments = [seg for i, seg in enumerate(segments) if i not in used_segments_dict[item_key]]
 
-    if not available_segments:
-        return "All segments for this item have been used.", used_segments_dict
+#     if not available_segments:
+#         return "All segments for this item have been used.", used_segments_dict
 
-    proportion_to_return = sample_proportion_from_beta(persona, persuasion_level)
-    proportion_to_return = min(proportion_to_return, max_proportion)
+#     proportion_to_return = sample_proportion_from_beta(persona, persuasion_level)
+#     proportion_to_return = min(proportion_to_return, max_proportion)
 
-    num_segments_to_return = round(proportion_to_return * len(available_segments))
-    num_segments_to_return = max(1, num_segments_to_return)  # Ensure at least one segment is returned
+#     num_segments_to_return = round(proportion_to_return * len(available_segments))
+#     num_segments_to_return = max(1, num_segments_to_return)  # Ensure at least one segment is returned
 
-    selected_segments = random.sample(available_segments, num_segments_to_return)
+#     selected_segments = random.sample(available_segments, num_segments_to_return)
 
-    for seg in selected_segments:
-        used_segments_dict[item_key].add(segments.index(seg))
+#     for seg in selected_segments:
+#         used_segments_dict[item_key].add(segments.index(seg))
 
-    formatted_segments = "\n".join(f"- {segment}" for segment in selected_segments)
+#     formatted_segments = "\n".join(f"- {segment}" for segment in selected_segments)
 
-    return formatted_segments, used_segments_dict
+#     return formatted_segments, used_segments_dict
 
 # parameters of the beta distribution 
 PERSONA_DICT = {
@@ -120,7 +130,7 @@ def sample_proportion_from_beta(persona, persuasion_level):
 
     return proportion
 
-def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_advanced"):
+def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_advanced"):
     os.makedirs(output_dir, exist_ok=True)
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
@@ -128,6 +138,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
     num_samples = len(df)
     unique_info_item_counts = [0] * num_samples
     total_info_item_counts = [0] * num_samples
+    df['info_items_dict'] = df['info_items_dict'].apply(json.loads)
 
     persona_types = ["avoidant", "defensive", "straightforward", 
                      "poor explainer", "dominating", "clueless"]
@@ -135,21 +146,14 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
         batch_df = df.iloc[start_idx:end_idx]
-        info_items = batch_df['info_items']
+        info_items_list = batch_df['info_items']
+        info_items_dict = batch_df['info_items_dict']
         outlines = batch_df['outlines']
         current_conversations = [""] * (end_idx - start_idx)
         unique_info_items_sets = [set() for _ in range(end_idx - start_idx)]
-        total_info_item_counts[start_idx:end_idx] = [count_information_items(info_item) for info_item in info_items]
+        total_info_item_counts[start_idx:end_idx] = [count_information_items(info_items) for info_items in info_items_list]
         
-        total_segments_counts = []
-        extracted_segments_sets = [set() for _ in range(end_idx - start_idx)]
-        used_segments_dicts = [{} for _ in range(end_idx - start_idx)]
         personas = [random.choice(persona_types) for _ in range(end_idx - start_idx)]
-        
-        for segmented_items in batch_df['segmented_info_items']:
-            segmented_dict = ast.literal_eval(segmented_items)
-            total_segments = sum(len(segments) for segments in segmented_dict.values())
-            total_segments_counts.append(total_segments)
 
         #### 1. Handle the FIRST interviewer question and source answer outside the loop
         
@@ -170,8 +174,8 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
 
         # first source response
         starting_source_prompts = [
-            get_source_starting_prompt(current_conversation, info_item_list, persona)
-            for current_conversation, info_item_list, persona in zip(current_conversations, info_items, personas)
+            get_source_starting_prompt(current_conversation, info_items, persona)
+            for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
         ]
         starting_interviewee_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
         starting_interviewee_answers = [extract_text_inside_brackets(response) for response in starting_interviewee_responses]
@@ -200,8 +204,8 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
 
             # get specific information item
             specific_info_item_prompts = [
-                get_source_specific_info_item_prompt(current_conversation, info_item_list)
-                for current_conversation, info_item_list in zip(current_conversations, info_items)
+                get_source_specific_info_items_prompt(current_conversation, info_items)
+                for current_conversation, info_items in zip(current_conversations, info_items_list)
             ]
             interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, model, tokenizer)
             specific_info_items = [
@@ -220,15 +224,12 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
                 for response in interviewee_persuasion_level_responses
             ]
             
-            # get specific info segments
-            random_segments = []
-            for idx, (specific_item, segmented_items, persuasion_level_str, persona) in enumerate(zip(specific_info_items, batch_df['segmented_info_items'], persuasion_levels, personas)):
+            for idx, (specific_item, persuasion_level_str, persona) in enumerate(zip(specific_info_items, persuasion_levels, personas)):
                 info_item_numbers = extract_information_item_numbers(specific_item)
                 unique_info_items_sets[idx].update(info_item_numbers)
                 
                 if info_item_numbers:
                     chosen_item = f"Information Item #{info_item_numbers[0]}"
-
                     try:
                         persuasion_level_int = int(persuasion_level_str)
                     except (ValueError, TypeError):
@@ -236,23 +237,12 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
                     if persuasion_level_int not in [0, 1, 2]:
                         persuasion_level_int = 0
 
-                    segments, used_segments_dicts[idx] = get_random_segments(
-                        segmented_items, 
-                        chosen_item, 
-                        used_segments_dicts[idx], 
-                        persona,
-                        persuasion_level_int)
-                    extracted_segments_sets[idx].update([seg.strip() for seg in segments.split('\n') if seg.strip()])
-                else:
-                    segments = "No specific information item was chosen."
-                random_segments.append(segments)
-
             gc.collect()
 
             # source response
             source_prompts = [
-                get_advanced_source_persona_prompt(current_conversation, info_item_list, random_segment, persona)
-                for current_conversation, info_item_list, random_segment, persona in zip(current_conversations, info_items, random_segments, personas)
+                get_source_persona_prompt_advanced(current_conversation, info_items, persona, )
+                for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
             ]
             interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
             interviewee_answers = [extract_text_inside_brackets(response) for response in interviewee_responses]
@@ -278,8 +268,8 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
         ]
 
         ending_source_prompts = [
-            get_source_ending_prompt(current_conversation, info_item_list, persona)
-            for current_conversation, info_item_list, persona in zip(current_conversations, info_items, personas)
+            get_source_ending_prompt(current_conversation, info_items, persona)
+            for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
         ]
         ending_interviewee_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, model, tokenizer)
         ending_interviewee_answers = [extract_text_inside_brackets(response) for response in ending_interviewee_responses]
@@ -289,7 +279,6 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
         ]
 
         unique_info_item_counts[start_idx:end_idx] = [len(info_set) for info_set in unique_info_items_sets]
-        extracted_segments_counts = [len(extracted_set) for extracted_set in extracted_segments_sets]
 
         batch_output_df = pd.DataFrame({
             'id': batch_df['id'],
@@ -299,8 +288,6 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
             'final_conversations': current_conversations,
             'total_info_items_extracted': unique_info_item_counts[start_idx:end_idx],
             'total_info_item_count': total_info_item_counts[start_idx:end_idx],
-            'extracted_segments_counts': extracted_segments_counts,
-            'total_segments_counts': total_segments_counts
         })
 
         batch_file_name = f"conducted_interviews_batch_{start_idx}_{end_idx}.csv"
@@ -311,7 +298,16 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
     final_df = stitch_csv_files(output_dir, 'all_advanced_interviews_conducted.csv')
     return final_df
 
-def human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
+def get_relevant_info_items(info_item_numbers, info_items_dict):
+    relevant_items = []
+    for num in info_item_numbers:
+        key = f"Information Item #{num}"
+        item = info_items_dict.get(key, None)
+        if item:
+            relevant_items.append(f"{key}: {item}")
+    return "\n".join(relevant_items) if relevant_items else "No information items align with the question"
+
+def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
     os.makedirs(output_dir, exist_ok=True)
     role = input("Would you like to play as the interviewer (A) or source (B)? Please type 'A' or 'B': ").upper()
     while role not in ["A", "B"]:
@@ -345,21 +341,17 @@ def human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct",
         persona = random.choice(persona_types)
         print(f"Randomly selected persona: {persona}")
 
-    model = load_vllm_model(model_name)
-    tokenizer = initialize_tokenizer(model_name)
-
     sample = df.iloc[0] # can change this to randomly sample an interview instead
+    sample['info_items_dict'] = ast.literal_eval(sample['info_items_dict'])
     info_items = sample['info_items']
     outline = sample['outlines']
-    segmented_info_items = ast.literal_eval(sample['segmented_info_items'])
 
     current_conversation = ""
     unique_info_items_set = set()
-    used_segments_dict = {}
-
     total_info_item_count = count_information_items(info_items)
-    total_segments_count = sum(len(segments) for segments in segmented_info_items.values())
-    extracted_segments_set = set()
+
+    model = load_vllm_model(model_name)
+    tokenizer = initialize_tokenizer(model_name)
 
     #### 1. FIRST interviewer question and source answer
     if role == "interviewer":
@@ -398,26 +390,20 @@ def human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct",
             human_question = input("\nYour question (Interviewer): ")
             current_conversation += f"\n (Human) Interviewer: {human_question}"
 
-            specific_info_item_prompt = get_source_specific_info_item_prompt(current_conversation, info_items)
-            specific_info_item_response = generate_vllm_SOURCE_response_batch([specific_info_item_prompt], model, tokenizer)
-            specific_info_item = extract_text_inside_brackets(specific_info_item_response[0]) or "No information items align with the question"
+            specific_info_items_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
+            specific_info_items_response = generate_vllm_SOURCE_response_batch([specific_info_items_prompt], model, tokenizer)
+            all_relevant_info_items = extract_text_inside_brackets(specific_info_items_response[0]) or "No information items align with the question"
 
             persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona)
             persuasion_level_response = generate_vllm_SOURCE_response_batch([persuasion_level_prompt], model, tokenizer)
             persuasion_level = extract_text_inside_brackets(persuasion_level_response[0]) or "0"
 
-            info_item_numbers = extract_information_item_numbers(specific_info_item)
+            info_item_numbers = extract_information_item_numbers(all_relevant_info_items)
             unique_info_items_set.update(info_item_numbers)
-            
-            if info_item_numbers:
-                chosen_item = f"Information Item #{info_item_numbers[0]}"
-                persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
-                segments, used_segments_dict = get_random_segments(segmented_info_items, chosen_item, used_segments_dict, persona, persuasion_level_int)
-                extracted_segments_set.update([seg.strip() for seg in segments.split('\n') if seg.strip()])
-            else:
-                segments = "No specific information item was chosen."
+            relevant_info_items_str = get_relevant_info_items(info_item_numbers, sample['info_items_dict'])
+            persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
 
-            source_prompt = get_advanced_source_persona_prompt(current_conversation, info_items, segments, persona)
+            source_prompt = get_source_persona_prompt_advanced(current_conversation, relevant_info_items_str, persona, persuasion_level_int)
             source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
             source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
             current_conversation += f"\nInterviewee: {source_answer}"
@@ -429,27 +415,21 @@ def human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct",
             current_conversation += f"\nInterviewer: {interviewer_question}"
             print(f"Interviewer (LLM): {interviewer_question}")
 
-            specific_info_item_prompt = get_source_specific_info_item_prompt(current_conversation, info_items)
+            specific_info_item_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
             print(specific_info_item_prompt)
-            specific_info_item = input("Please pick the most relevant information item: ")
+            specific_info_items = input("Please pick the most relevant information items (multiple if appropriate, format choices as 'Information Item #X, Information Item #Y, ...'): ")
             
             persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona)
             print(persuasion_level_prompt)
             persuasion_level = input("Please respond with 0, 1, or 2 (measuring persuasiveness): ")
 
-            info_item_numbers = extract_information_item_numbers(specific_info_item)
+            info_item_numbers = extract_information_item_numbers(specific_info_items)
+            print(info_item_numbers)
             unique_info_items_set.update(info_item_numbers)
+            relevant_info_items_str = get_relevant_info_items(info_item_numbers, sample['info_items_dict'])
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
 
-            if info_item_numbers:
-                chosen_item = f"Information Item #{info_item_numbers[0]}"
-                segments, used_segments_dict = get_random_segments(segmented_info_items, chosen_item, used_segments_dict, persona, persuasion_level_int)
-                extracted_segments_set.update([seg.strip() for seg in segments.split('\n') if seg.strip()])
-            else:
-                segments = "No specific information item was chosen."
-
-            
-            source_prompt = get_advanced_source_persona_prompt(current_conversation, info_items, segments, persona)
+            source_prompt = get_source_persona_prompt_advanced(current_conversation, relevant_info_items_str, persona, persuasion_level_int)
             print(f"\n{source_prompt}")
             print("No need to wrap your response in brackets, please disregard the last section above")
             human_answer = input("Your Response to Interviewer's Question: ")
@@ -463,7 +443,7 @@ def human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct",
         human_question = input("\nYour final remark (Interviewer): ")
         current_conversation += f"\n (Human) Interviewer: {human_question}"
 
-        source_prompt = get_source_ending_prompt(current_conversation, info_items, persona)
+        source_prompt = get_source_ending_prompt(current_conversation, persona)
         source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
         source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
         current_conversation += f"\nInterviewee: {source_answer}"
@@ -475,7 +455,7 @@ def human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct",
         current_conversation += f"\nInterviewer: {interviewer_question}"
         print(f"Interviewer (LLM): {interviewer_question}")
 
-        source_prompt = get_source_ending_prompt(current_conversation, info_items, persona)
+        source_prompt = get_source_ending_prompt(current_conversation, persona)
         print(f"\n{source_prompt}")
         print("No need to wrap your response in brackets, please disregard the last section above")
         human_answer = input("Your final ending remark (Interviewee): ")
@@ -488,14 +468,11 @@ def human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct",
     'id': sample['id'],
     'combined_dialogue': sample['combined_dialogue'],
     'info_items': sample['info_items'],
-    'segmented_info_items': sample['segmented_info_items'],
     'outlines': sample['outlines'],
     'persona chosen': [persona],
     'final_conversation': [current_conversation],
     'total_info_items_extracted': [len(unique_info_items_set)],
     'total_info_item_count': [total_info_item_count],
-    'extracted_segments_count': [len(extracted_segments_set)],
-    'total_segments_count': [total_segments_count]
     })
 
     output_path = os.path.join(output_dir, f"human_{role}_vs_LLM_interview_{sample['id']}.csv")
@@ -513,14 +490,14 @@ if __name__ == "__main__":
     print(df)
     # df has columns info_items and outlines
     num_turns = 4
-    # simulated_interviews = conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta-Llama-3-8B-Instruct")
+    # simulated_interviews = conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct")
     
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")
     # for i, interview in enumerate(simulated_interviews['final_conversations']):
     #     print(f"Interview {i+1}:\n {interview}\n\n\n")
 
     # HUMAN EVAL:
-    human_evaluation = human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    human_evaluation = human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-8b-instruct")
     print(human_evaluation)
 '''
 from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.

@@ -84,7 +84,7 @@ def log_gpu_memory():
         reserved = torch.cuda.memory_reserved(i) / (1024 ** 3)
         print(f"GPU {i}: Allocated {allocated:.2f} GB, Reserved {reserved:.2f} GB")
 
-def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straightforward", interviewer_model_name="meta-llama/Meta-Llama-3-70B-Instruct", source_model_name="meta-llama/Meta-Llama-3-70B-Instruct", batch_size=20, output_dir="output_results/game_sim/conducted_interviews_basic"):
+def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straightforward", interviewer_model_name="meta-llama/meta-llama-3.1-70b-instruct", source_model_name="meta-llama/meta-llama-3.1-70b-instruct", batch_size=20, output_dir="output_results/game_sim/conducted_interviews_basic"):
     os.makedirs(output_dir, exist_ok=True)
     
     num_samples = len(df)
@@ -214,8 +214,8 @@ if __name__ == "__main__":
     num_turns = 2
     simulated_interviews = conduct_basic_interviews_batch(num_turns, 
                                                           df, 
-                                                          interviewer_model_name="meta-llama/Meta-Llama-3-8B-Instruct", 
-                                                          source_model_name="meta-llama/Meta-Llama-3-8B-Instruct",
+                                                          interviewer_model_name="meta-llama/llama-3.1-8b-instruct", 
+                                                          source_model_name="meta-llama/llama-3.1-8b-instruct",
                                                           output_dir="output_results/game_sim/conducted_interviews_basic/interviewer-8B-vs-source-8B")
     print(simulated_interviews)
     print(simulated_interviews['final_conversations'].iloc[0])

@@ -388,7 +388,7 @@ def get_source_starting_prompt(QA_Sequence, info_items, persona="straightforward
     '''
     return prompt
 
-def get_source_ending_prompt(QA_Sequence, info_items, persona="straightforward"):
+def get_source_ending_prompt(QA_Sequence, persona="straightforward"):
     if persona.lower() in PERSONA_PROMPTS:
         persona_prompt = PERSONA_PROMPTS.get(persona.lower())
     prompt = f'''
@@ -396,17 +396,11 @@ def get_source_ending_prompt(QA_Sequence, info_items, persona="straightforward")
     
     {persona_prompt}
     
-    You have the following pieces of information:
-
-    {info_items}
-
-    These information items represent the information you possess and can divulge in an interview.
-    
     Here is the conversation so far:
 
     {QA_Sequence}
 
-    It's the end of the interview. No need to use the information items anymore. Please respond to the interviewer's ending remark appropriately according to your {persona} persona. 
+    It's the end of the interview. Please respond to the interviewer's ending remark appropriately according to your {persona} persona. 
     Make sure to write your final response inside brackets. Below are some examples, and your response should follow its format:
 
     Example 1:
@@ -578,40 +572,68 @@ def get_interviewer_ending_prompt(QA_Sequence, outline_objectives, strategy = "s
 
 # ------------- data processing section ------------- #
 
-OUTLINE_FORMAT = '''
-The format of your response should be in this sequence:
-  1. First, explain your thought process step by step: 
-    - What were the central topics of discussion?
-    - What specific areas of the subject's background, expertise, or experiences were explored?
-    - Were there any recurring themes or questions that seemed to guide the conversation?
-    - How did the interviewer probe for deeper insights or follow up on key points?
-  2. Now putting this together, in brackets, create an outline that could have served as the interviewer's guide, with 4-6 broad themes or objectives that are directly relevant to the content of the transcript. Do not simply restate parts of the transcript; instead, synthesize the information into coherent, high-level themes that would shape the flow of the interview.
-  3. In other words, place the entire outline you generate in brackets: 
-    ie. Here is the format of the generated outline: 
+def get_outline_prompt(QA_Sequence, use_few_shot=True):
+    if use_few_shot:
+        few_shot = '''    [Examples]
+        Example output 1:
         [
-            Who is getting interviewered? Please introduce the source being interviewed (name, expert in what field, etc).
-            Then, give a brief background summary of the interview topic.
-
-            - Objective/Theme 1:
-            - Objective/Theme 2:
-            - Objective/Theme 3:
-            ...
+            Source biography: Howard Kurtz is a media critic and host of CNN's "RELIABLE SOURCES," .
+            Interview context: The war on terror raises questions about the media's responsibility to report the truth while protecting national security.
+    
+            - Objective 1: Thoughts on when information serves the public.
+                - Follow-up 1: Ways in which criticism overshadows the valuable service journalists play.
+            - Objective 2: Thoughts on when information compromises national security.
+            - Objective 3: Thoughts the factual vs. emotional impact of information.
+            - Objective 5: Other areas or specific events where news coverage was criticized.
         ]
-'''
-
-# generating high-level objectives or topics that can naturally lead to the extraction of the key information without directly giving away those details
-def get_outline_prompt(QA_Sequence):
+    
+        Example output 2: 
+        [
+            William Schneider is a political analyst.   
+            Brief background: President Bush is expected to ask Congress for a $1 billion increase in NASA's funding to support manned missions to the moon.
+        
+            - Objective 1: Public perception on space missions.
+                - Follow-up 1: Differences with the perception in the 1960s.
+            - Objective 2: Political motivations
+            - Objective 3: Economic/Demographic motivations
+            - Objective 4: President's legacy
+                - Follow-up 1: Contrast with father's legacy.
+        ]
+    
+        Now it's your turn.''' 
+    else:
+        few_shot = ''
+    
     prompt = f'''
-    You are an experienced interviewer preparing for an interview. The goal of this task is to reverse engineer and generate a high-level outline of objectives and general themes that a human interviewer might have prepared before conducting this specific interview.
-    You are provided with the complete transcript of the interview. Based on this transcript, identify the key themes, topics, and objectives that the interviewer likely focused on. The outline should be flexible and tailored to the specific content of the interview, reflecting the natural flow and transitions that occurred during the conversation.
+    You are a helpful journalist's assistant. I will give you a transcript of an interview I just conducted.
 
-    {OUTLINE_FORMAT}
+    Can you summarize my questions to the goals and notes I had going into the interview with? 
+    If some questions were clearly asked in follow-up and in response to information provided by the source, please return them separately. 
+    Be abstract (do not mention people's names or events) and concise.
+    Please return the outline in brackets based on this transcript. 
+    Please express it in the following format:
 
-    Here is the interview transcript for your reference:
+    [
+        Source biography: Give a brief biography on the source being interviewed (name, expertise, etc).
+        Interview context: Give a brief background summary of the interview topic.
+            - Objective 1:
+                - Follow-up 1: (if any)
+            - Objective 2:
+                - Follow-up 1:
+                - Follow-up 2:
+            - Objective 3:
+            ...
+    ]
+
+    {few_shot}
+    
+    Here is a transcript:
 
     {QA_Sequence}
 
-    Please generate the tailored outline in brackets based on this transcript:
+    Again, be brief, abstract and concise, try to recreate my high-level notes. There are no fixed amount of objectives, 
+    but pay attention to which questions are follow-up questions and which are outline-level.
+    Write only a few words per outline point.
     '''
     return prompt
 
@@ -646,41 +668,6 @@ def get_segmented_info_items_prompt(QA_Sequence, info_item):
     Generate detailed segments of information for this info item, providing at least 3 segments, each expanding on different aspects of the information. Each segment should be a potential talking point in an interview.
     '''
     return prompt
-
-# def get_segmented_info_items_prompt(QA_Sequence, info_item):
-#     prompt = f'''
-#     Below is an interview transcript:
-
-#     {QA_Sequence}
-
-#     Here is one of the key information items extracted from this interview:
-
-#     {info_item}
-
-#     Please segment the information item into at least **three detailed segments**, each expanding on different aspects of the information. Each segment should be a potential talking point in an interview.
-
-#     **Provide the segments in the following format:**
-
-#     Segment 1:
-#     Title: [A short title summarizing the segment]
-#     Content: [A detailed explanation of this aspect]
-
-#     Segment 2:
-#     Title: [A short title summarizing the segment]
-#     Content: [A detailed explanation of this aspect]
-
-#     Segment 3:
-#     Title: [A short title summarizing the segment]
-#     Content: [A detailed explanation of this aspect]
-
-#     **Ensure that:**
-#     - Each segment is numbered and follows the exact format.
-#     - The titles are concise and descriptive.
-#     - The content provides depth and clarity on the aspect.
-
-#     Please proceed to provide the segmented information item now.
-#     '''
-#     return prompt
 
 # only for topic-transition extraction
 def get_all_topic_transition_questions_prompt(QA_Sequence, question):

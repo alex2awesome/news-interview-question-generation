@@ -33,8 +33,7 @@ def load_vllm_model(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
         dtype=torch.float16,
         tensor_parallel_size=torch.cuda.device_count(),
         download_dir=os.environ["HF_HOME"], 
-        enforce_eager=True,
-        max_model_len=60_000
+        enforce_eager=True
     )
 
     memory_allocated = torch.cuda.memory_allocated()

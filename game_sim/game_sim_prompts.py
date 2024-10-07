@@ -572,7 +572,7 @@ def get_interviewer_ending_prompt(QA_Sequence, outline_objectives, strategy = "s
 
 # ------------- data processing section ------------- #
 
-def get_outline_prompt(QA_Sequence, use_few_shot=True):
+def get_outline_followup_prompt(QA_Sequence, use_few_shot=True):
     if use_few_shot:
         few_shot = '''    [Examples]
         Example output 1:
@@ -634,6 +634,66 @@ def get_outline_prompt(QA_Sequence, use_few_shot=True):
     Again, be brief, abstract and concise, try to recreate my high-level notes. There are no fixed amount of objectives, 
     but pay attention to which questions are follow-up questions and which are outline-level.
     Write only a few words per outline point.
+    '''
+    return prompt
+
+def get_outline_only_prompt(outline_text):
+    prompt = f'''
+    You are an assistant that processes outlines by removing any follow-up sections.
+
+    Please only respond with the provided outline exactly as it is, but exclude any follow-up items.
+
+    Here is the outline:
+
+    {outline_text}
+
+    Here are some examples:
+    
+    Example 1:
+    Input:
+    [
+        Source biography: Jane Doe is a technology expert and author.
+        Interview context: The impact of artificial intelligence on modern workplaces.
+
+        - Objective 1: Understanding AI integration in daily operations.
+            - Follow-up 1: Challenges faced by employees adapting to AI tools.
+        - Objective 2: Ethical considerations of AI deployment.
+        - Objective 3: Future trends in AI technology.
+            - Follow-up 1: Potential job market shifts due to AI advancements.
+    ]
+
+    Output:
+    [
+        Source biography: Jane Doe is a technology expert and author.
+        Interview context: The impact of artificial intelligence on modern workplaces.
+
+        - Objective 1: Understanding AI integration in daily operations.
+        - Objective 2: Ethical considerations of AI deployment.
+        - Objective 3: Future trends in AI technology.
+    ]
+
+    Example 2:
+    Input:
+    [
+        Source biography: John Smith is an environmental scientist.
+        Interview context: Climate change effects on coastal regions.
+
+        - Objective 1: Analyzing rising sea levels.
+            - Follow-up 1: Impact on local communities.
+        - Objective 2: Biodiversity loss in coastal ecosystems.
+        - Objective 3: Mitigation strategies for coastal preservation.
+            - Follow-up 1: Community-based conservation efforts.
+    ]
+
+    Output:
+    [
+        Source biography: John Smith is an environmental scientist.
+        Interview context: Climate change effects on coastal regions.
+
+        - Objective 1: Analyzing rising sea levels.
+        - Objective 2: Biodiversity loss in coastal ecosystems.
+        - Objective 3: Mitigation strategies for coastal preservation.
+    ]
     '''
     return prompt
 

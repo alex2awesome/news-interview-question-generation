@@ -7,7 +7,7 @@ import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, find_project_root
-from game_sim_prompts import get_outline_prompt
+from game_sim_prompts import get_outline_followup_prompt, get_outline_only_prompt
 
 # ---- single use ---- #
 def vllm_infer(messages, model, tokenizer):
@@ -23,15 +23,15 @@ def generate_vllm_response(prompt, role, model, tokenizer):
     ]
     return vllm_infer(messages, model, tokenizer)
 
-def extract_outlines(transcripts, model, tokenizer):
-    information_items = []
+def extract_outlines_followup(transcripts, model, tokenizer):
+    outlines = []
 
     for transcript in transcripts:
-        prompt = get_outline_prompt(transcript)
+        prompt = get_outline_followup_prompt(transcript)
         response = generate_vllm_response(prompt, "You are an AI generating an outline from an interview transcript", model, tokenizer)
-        information_items.append(response)
+        outlines.append(response)
 
-    return information_items
+    return outlines
 
 # ---- batch use ---- #
 def vllm_infer_batch(messages_batch, model, tokenizer):
@@ -50,17 +50,39 @@ def generate_vllm_outline_batch(prompts, model, tokenizer):
         ]
     return vllm_infer_batch(messages_batch, model, tokenizer)
 
-def extract_outlines_batch(transcripts, model, tokenizer, batch_size=100):
+def generate_vllm_outline_only_batch(outlines, model, tokenizer):
+    messages_batch = [
+            [
+            {"role": "system", "content": "You are an AI specializing in data extraction."}, 
+            {"role": "user", "content": prompt}
+            ] 
+            for prompt in outlines
+        ]
+    return vllm_infer_batch(messages_batch, model, tokenizer)
+
+def extract_outlines_followup_batch(transcripts, model, tokenizer, batch_size=100):
     outlines = []
     
     for i in range(0, len(transcripts), batch_size):
         batch = transcripts[i:i+batch_size]
-        prompts = [get_outline_prompt(transcript) for transcript in batch]
+        prompts = [get_outline_followup_prompt(transcript) for transcript in batch]
         batch_responses = generate_vllm_outline_batch(prompts, model, tokenizer)
         outline_responses = [extract_text_inside_brackets(response) for response in batch_responses]
         outlines.extend(outline_responses)
     
     return outlines
+
+def extract_outlines_only_batch(outlines, model, tokenizer, batch_size=100):
+    objectives = []
+    
+    for i in range(0, len(outlines), batch_size):
+        batch = outlines[i:i+batch_size]
+        prompts = [get_outline_only_prompt(outline) for outline in batch]
+        batch_responses = generate_vllm_outline_only_batch(prompts, model, tokenizer)
+        objective_responses = [extract_text_inside_brackets(response) for response in batch_responses]
+        objectives.extend(objective_responses)
+    
+    return objectives
 
 # ----------- #
 def process_outlines(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", output_dir="output_results/game_sim/outlines"):
@@ -69,7 +91,11 @@ def process_outlines(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", outp
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
 
-    df['outlines'] = extract_outlines_batch(df['combined_dialogue'], model, tokenizer)
+    print("Generating outlines with follow-ups...")
+    outlines_with_followups = extract_outlines_followup_batch(df['combined_dialogue'], model, tokenizer)
+
+    print("Extracting only objectives from outlines...")
+    df['outlines'] = extract_outlines_only_batch(outlines_with_followups, model, tokenizer)
     
     output_file_path = os.path.join(output_dir, "final_df_with_outlines.csv")
     df.to_csv(output_file_path, index=False)
@@ -79,7 +105,7 @@ def process_outlines(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", outp
 if __name__ == "__main__": 
     current_path = os.path.dirname(os.path.abspath(__file__))
     project_root = find_project_root(current_path, 'news-interview-question-generation')
-    dataset_path = os.path.join(project_root, "output_results/game_sim/segmented_info_items/final_df_with_segmented_info_items.csv")
+    dataset_path = os.path.join(project_root, "output_results/game_sim/info_items_dict/final_df_with_info_items_dict.csv")
     df = pd.read_csv(dataset_path)
     print(df)
 

@@ -14,7 +14,7 @@ from scipy.stats import beta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
-from game_sim.game_sim_prompts import get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_item_prompt, get_source_persuasion_level_prompt, get_advanced_source_persona_prompt, get_advanced_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
+from game_sim.game_sim_prompts import get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_items_prompt, get_source_persuasion_level_prompt, get_source_persona_prompt_advanced, get_advanced_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 # ---- batch use ---- #
@@ -311,7 +311,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/Meta
     final_df = stitch_csv_files(output_dir, 'all_advanced_interviews_conducted.csv')
     return final_df
 
-def conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
+def human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
     os.makedirs(output_dir, exist_ok=True)
     role = input("Would you like to play as the interviewer (A) or source (B)? Please type 'A' or 'B': ").upper()
     while role not in ["A", "B"]:
@@ -319,17 +319,6 @@ def conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Lla
     role = "interviewer" if role == "A" else "source"
     print(f"\nYou've chosen to play as the {role}.\n")
 
-    model = load_vllm_model(model_name)
-    tokenizer = initialize_tokenizer(model_name)
-
-    sample = df.iloc[0] # can change this to randomly sample an interview instead
-    info_items = sample['info_items']
-    outline = sample['outlines']
-    segmented_info_items = ast.literal_eval(sample['segmented_info_items'])
-
-    current_conversation = ""
-    unique_info_items_set = set()
-    used_segments_dict = {}
     persona_types = ["avoidant", "defensive", "straightforward", "poor explainer", "dominating", "clueless"]
     if role == 'interviewer':
         print("Please choose a source persona to play against.")
@@ -355,6 +344,18 @@ def conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Lla
         print("Invalid input. Randomly picking a persona for you.")
         persona = random.choice(persona_types)
         print(f"Randomly selected persona: {persona}")
+
+    model = load_vllm_model(model_name)
+    tokenizer = initialize_tokenizer(model_name)
+
+    sample = df.iloc[0] # can change this to randomly sample an interview instead
+    info_items = sample['info_items']
+    outline = sample['outlines']
+    segmented_info_items = ast.literal_eval(sample['segmented_info_items'])
+
+    current_conversation = ""
+    unique_info_items_set = set()
+    used_segments_dict = {}
 
     total_info_item_count = count_information_items(info_items)
     total_segments_count = sum(len(segments) for segments in segmented_info_items.values())
@@ -477,7 +478,7 @@ def conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Lla
         source_prompt = get_source_ending_prompt(current_conversation, info_items, persona)
         print(f"\n{source_prompt}")
         print("No need to wrap your response in brackets, please disregard the last section above")
-        human_answer = input("Interviewee: ")
+        human_answer = input("Your final ending remark (Interviewee): ")
         current_conversation += f"\n (Human) Interviewee: {human_answer}"
 
     print("\nFinal Interview Conversation:")
@@ -519,8 +520,8 @@ if __name__ == "__main__":
     #     print(f"Interview {i+1}:\n {interview}\n\n\n")
 
     # HUMAN EVAL:
-    human_eval = conduct_interactive_interview(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
-    print(human_eval)
+    human_evaluation = human_eval(num_turns, df, model_name="meta-llama/Meta-Llama-3-70B-Instruct")
+    print(human_evaluation)
 '''
 from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.
 column structure of the database outputted:

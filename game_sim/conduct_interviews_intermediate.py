@@ -12,7 +12,7 @@ import gc
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files
-from game_sim.game_sim_prompts import get_source_prompt_intermediate, get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_item_prompt, get_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
+from game_sim.game_sim_prompts import get_source_prompt_intermediate, get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_items_prompt, get_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 # ---- batch use ---- #
@@ -104,15 +104,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
         unique_info_items_sets = [set() for _ in range(end_idx - start_idx)]
         total_info_item_counts[start_idx:end_idx] = [count_information_items(info_item) for info_item in info_items]
         
-        total_segments_counts = []
-        extracted_segments_sets = [set() for _ in range(end_idx - start_idx)]
-        used_segments_dicts = [{} for _ in range(end_idx - start_idx)]
         personas = [random.choice(persona_types) for _ in range(end_idx - start_idx)]
-        
-        for segmented_items in batch_df['segmented_info_items']:
-            segmented_dict = ast.literal_eval(segmented_items)
-            total_segments = sum(len(segments) for segments in segmented_dict.values())
-            total_segments_counts.append(total_segments)
 
         #### 1. Handle the FIRST interviewer question and source answer outside the loop
         # First interviewer question (starting prompt)
@@ -167,24 +159,15 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
                 for response in interviewee_specific_item_responses
             ]
 
-            random_segments = []
-            for idx, (specific_item, segmented_items) in enumerate(zip(specific_info_items, batch_df['segmented_info_items'])):
+            for idx, (specific_item) in enumerate(specific_info_items):
                 info_item_numbers = extract_information_item_numbers(specific_item)
                 unique_info_items_sets[idx].update(info_item_numbers)
-                
-                if info_item_numbers:
-                    chosen_item = f"Information Item #{info_item_numbers[0]}"
-                    segments, used_segments_dicts[idx] = get_random_segments(segmented_items, chosen_item, used_segments_dicts[idx])
-                    extracted_segments_sets[idx].update([seg.strip() for seg in segments.split('\n') if seg.strip()])
-                else:
-                    segments = "No specific information item was chosen."
-                random_segments.append(segments)
 
             gc.collect()
 
             source_prompts = [
-                get_source_prompt_intermediate(current_conversation, info_item_list, random_segment, persona)
-                for current_conversation, info_item_list, random_segment, persona in zip(current_conversations, info_items, random_segments, personas)
+                get_source_prompt_intermediate(current_conversation, info_item_list, persona)
+                for current_conversation, info_item_list, persona in zip(current_conversations, info_items, personas)
             ]
             interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
             interviewee_answers = [extract_text_inside_brackets(response) for response in interviewee_responses]
@@ -221,7 +204,6 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
         ]
 
         unique_info_item_counts[start_idx:end_idx] = [len(info_set) for info_set in unique_info_items_sets]
-        extracted_segments_counts = [len(extracted_set) for extracted_set in extracted_segments_sets]
 
         batch_output_df = pd.DataFrame({
             'id': batch_df['id'],
@@ -230,9 +212,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
             'outlines': batch_df['outlines'],
             'final_conversations': current_conversations,
             'total_info_items_extracted': unique_info_item_counts[start_idx:end_idx],
-            'total_info_item_count': total_info_item_counts[start_idx:end_idx],
-            'extracted_segments_counts': extracted_segments_counts,
-            'total_segments_counts': total_segments_counts
+            'total_info_item_count': total_info_item_counts[start_idx:end_idx]
         })
 
         batch_file_name = f"conducted_interviews_batch_{start_idx}_{end_idx}.csv"

@@ -10,7 +10,7 @@ import torch
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
-from game_sim.game_sim_prompts import get_source_prompt_basic, get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_item_prompt, get_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
+from game_sim.game_sim_prompts import get_source_prompt_basic, get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_items_prompt, get_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 # ---- single use ---- #
@@ -91,9 +91,6 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
     unique_info_item_counts = [0] * num_samples
     total_info_item_counts = [0] * num_samples
 
-    all_prompts = [] # TEMP LINE (DELETE LATER)
-    all_responses = [] # TEMP LINE (DELETE LATER) 
-
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
         batch_df = df.iloc[start_idx:end_idx]
@@ -110,10 +107,7 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
             for outline in outlines
         ]
 
-        all_prompts.extend(starting_interviewer_prompts) # TEMP LINE (DELETE LATER)
         starting_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(starting_interviewer_prompts, model, tokenizer)
-        all_responses.extend(starting_interviewer_responses) # TEMP LINE (DELETE LATER)
-        
         starting_interviewer_questions = [
             extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
             for response in starting_interviewer_responses
@@ -128,9 +122,7 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
             for current_conversation, info_item_list in zip(current_conversations, info_items)
         ]
 
-        all_prompts.extend(starting_source_prompts) # TEMP LINE (DELETE LATER)
         starting_interviewee_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
-        all_responses.extend(starting_interviewee_responses) # TEMP LINE (DELETE LATER)
        
         starting_interviewee_answers = [extract_text_inside_brackets(response) for response in starting_interviewee_responses]
         current_conversations = [
@@ -144,10 +136,8 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
                 get_interviewer_prompt(current_conversation, outline, "straightforward")
                 for current_conversation, outline in zip(current_conversations, outlines)
             ]
-            all_prompts.extend(interviewer_prompts) # TEMP LINE (DELETE LATER)
 
             interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, model, tokenizer)
-            all_responses.extend(interviewer_responses) # TEMP LINE (DELETE LATER)
             interviewer_questions = [extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}" for response in interviewer_responses]
             gc.collect()
 
@@ -157,14 +147,11 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
             ]
 
             specific_info_item_prompts = [
-                get_source_specific_info_item_prompt(current_conversation, info_item_list)
+                get_source_specific_info_items_prompt(current_conversation, info_item_list)
                 for current_conversation, info_item_list in zip(current_conversations, info_items)
             ]
-            
-            all_prompts.extend(specific_info_item_prompts) # TEMP LINE (DELETE LATER)
             interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, model, tokenizer)
-            all_responses.extend(interviewee_specific_item_responses) # TEMP LINE (DELETE LATER)
-           
+    
             specific_info_items = [
                 extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No information items align with the question"
                 for response in interviewee_specific_item_responses
@@ -181,10 +168,7 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
                 for current_conversation, info_item_list, specific_info_item in zip(current_conversations, info_items, specific_info_items)
             ]
             
-            all_prompts.extend(source_prompts) # TEMP LINE (DELETE LATER)
             interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
-            all_responses.extend(interviewee_responses) # TEMP LINE (DELETE LATER)
-            
             interviewee_answers = [extract_text_inside_brackets(response) for response in interviewee_responses]
             current_conversations = [
                 f"{ch}\nInterviewee: {response}"
@@ -198,10 +182,7 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
             for current_conversation, outline in zip(current_conversations, outlines)
         ]
         
-        all_prompts.extend(interviewer_ending_prompts) # TEMP LINE (DELETE LATER)
         ending_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_ending_prompts, model, tokenizer)
-        all_responses.extend(ending_interviewer_responses) # TEMP LINE (DELETE LATER)
-       
         ending_interviewer_questions = [
             extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
             for response in ending_interviewer_responses
@@ -216,10 +197,7 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
             for current_conversation, info_item_list in zip(current_conversations, info_items)
         ]
      
-        all_prompts.extend(ending_source_prompts) # TEMP LINE (DELETE LATER)
         ending_interviewee_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, model, tokenizer)
-        all_responses.extend(ending_interviewee_responses) # TEMP LINE (DELETE LATER)
-      
         ending_interviewee_answers = [extract_text_inside_brackets(response) for response in ending_interviewee_responses]
         current_conversations = [
             f"{ch}\nInterviewee: {response}"
@@ -242,15 +220,6 @@ def conduct_basic_interviews_batch(num_turns, df, model_name = "meta-llama/Meta-
         batch_file_path = os.path.join(output_dir, batch_file_name)
         batch_output_df.to_csv(batch_file_path, index=False)
         print(f"Batch {start_idx} to {end_idx} saved to {batch_file_path}")
-
-    with open(os.path.join(output_dir, "all_prompts.txt"), "w") as prompt_file: # TEMP LINE (DELETE LATER)
-        for prompt in all_prompts: # TEMP LINE (DELETE LATER)
-            prompt_file.write(prompt + "\n") # TEMP LINE (DELETE LATER)
-
-    with open(os.path.join(output_dir, "all_responses.txt"), "w") as response_file: # TEMP LINE (DELETE LATER)
-        for response in all_responses: # TEMP LINE (DELETE LATER)
-            response_file.write(response + "\n") # TEMP LINE (DELETE LATER)
-    
     final_df = stitch_csv_files(output_dir, 'all_basic_interviews_conducted.csv')
     return final_df
 

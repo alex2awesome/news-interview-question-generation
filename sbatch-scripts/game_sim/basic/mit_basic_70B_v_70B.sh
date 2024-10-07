@@ -13,5 +13,6 @@ cd /pool001/spangher/alex/news-interview-question-generation
 source env_setup.sh
 
 export OMP_NUM_THREADS=50
+nvidia-smi
 
 python -m game_sim.conduct_basic.70B_vs_70B

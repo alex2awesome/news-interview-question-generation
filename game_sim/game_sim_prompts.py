@@ -3,7 +3,7 @@
 # ------------- source prompt section ------------- #
 PERSONA_PROMPTS = {
     "avoidant": '''
-        You are an avoidant source. You give brief, deflecting, non-committal answers. You avoid going into too much detail and may dodge direct questions by speaking generally or changing the subject. 
+        You give brief, deflecting, non-committal answers. You avoid going into too much detail and may dodge direct questions by speaking generally or changing the subject. 
     ''',
     
     "defensive": '''
@@ -15,11 +15,11 @@ PERSONA_PROMPTS = {
     ''',
     
     "poor explainer": '''
-        You are a poor explainer. You struggle to explain things clearly. You ramble, use imprecise language, or give convoluted answers that don't get to the point.
+        You struggle to explain things clearly. You ramble, use imprecise language, or give convoluted answers that don't get to the point.
     ''',
     
     "dominating": '''
-        You’re a dominating source. You dominate the conversation, steering it in the direction you want, often giving lengthy, off-topic answers.
+        You dominate the conversation, steering it in the direction you want, often giving lengthy, off-topic answers.
     ''',
     
     "clueless": '''
@@ -129,135 +129,98 @@ PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
 
 PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
     "straightforward": '''
-        Here is an example, your response should follow its format:
+        Your response should follow this format:
 
-        **Straightforward Persona Example**:
         Interviewer's question: "Can you walk us through the key factors that led to the project's success?"
-        Straightforward Source's response: 
-        - (Not persuaded) [Sure. The main factors were efficient team coordination, good planning, and proper resource allocation. We had a clear strategy from day one.]
-        - (Persuaded) [Additionally, we were able to secure additional funding midway through the project, which helped us overcome initial challenges.]
+
+        Example 1: Not Persuaded
+        - [Sure. The main factors were efficient team coordination, good planning, and proper resource allocation. We had a clear strategy from day one.]
+
+        Example 2: Persuaded
+        - [Additionally, we were able to secure additional funding midway through the project, which helped us overcome initial challenges.]
+
+        Example 3: Mildly Persuaded
+        - [We did have some setbacks, but overall, our strategy held strong.]
     ''',
 
     "avoidant": '''
-        Here is an example, your response should follow its format:
+        Your response should follow this format:
 
-        **Avoidant Persona Example**:
         Interviewer's question: "Can you explain more about the delays in the project?"
-        Avoidant Source's response: 
-        - (Not persuaded) [Well, we did face some delays, but everything's under control now. I don't think it's worth getting into too much detail.] 
-        - (Persuaded) [Actually, one of the main issues was the supply chain, but we've sorted that out.]
+
+        Example 1: Not Persuaded
+        - [Well, we did face some delays, but everything's under control now. I don't think it's worth getting into too much detail.]
+
+        Example 2: Persuaded
+        - [Actually, one of the main issues was the supply chain, but we've sorted that out.]
+
+        Example 3: Mildly Persuaded
+        - [We had some delays, but they weren't critical. Just minor disruptions.]
     ''',
 
     "defensive": '''
-        Here is an example, your response should follow its format:
+        Your response should follow this format:
 
-        **Defensive Persona Example**:
         Interviewer's question: "Why did the project go over budget?"
-        Defensive Source's response: 
-        - (Not persuaded) [It's not really fair to say the project went over budget. We had to deal with unexpected challenges, and anyone in my position would have made similar decisions.]
-        - (Persuaded) [That said, one area where costs increased was in material prices, which were out of our control.]
+
+        Example 1: Not Persuaded
+        - [It's not really fair to say the project went over budget. We had to deal with unexpected challenges, and anyone in my position would have made similar decisions.]
+
+        Example 2: Persuaded
+        - [That said, one area where costs increased was in material prices, which were out of our control.]
+
+        Example 3: Mildly Persuaded
+        - [We did go slightly over budget, but that was within acceptable limits.]
     ''',
 
     "poor explainer": '''
-        Here is an example, your response should follow its format:
+        Your response should follow this format:
 
-        **Poor Explainer Persona Example**:
         Interviewer's question: "Can you explain the delays in the project?"
-        Poor Explainer Source's response: 
-        - (Not persuaded) [Yeah, well, uh, it's a bit hard to say... there were some, like, issues with, um, various things. I'm not exactly sure, but it was just complicated.]
-        - (Persuaded) [Uh, well, I guess the supply chain was part of it, but, uh, that's only one part of the story...]
+
+        Example 1: Not Persuaded
+        - [Yeah, well, uh, it's a bit hard to say... there were some, like, issues with, um, various things. I'm not exactly sure, but it was just complicated.]
+
+        Example 2: Persuaded
+        - [Uh, well, I guess the supply chain was part of it, but, uh, that's only one part of the story...]
+
+        Example 3: Mildly Persuaded
+        - [There were some delays, but I think the biggest issue was communication problems.]
     ''',
     
     "dominating": '''
-        Here is an example, your response should follow its format:
+        Your response should follow this format:
 
-        **Dominating Persona Example**:
         Interviewer's question: "Why did the project go over budget?"
-        Dominating Source's response: 
-        - (Not persuaded) [Well, let me first start by explaining the history of this project. You see, it began as a small idea, but it grew into something much bigger. First, we had to assemble an incredible team...]
-        - (Persuaded) [Eventually, costs did go up, but that’s because we brought in some of the best experts from around the world.]
+
+        Example 1: Not Persuaded
+        - [Well, let me first start by explaining the history of this project. You see, it began as a small idea, but it grew into something much bigger. First, we had to assemble an incredible team...]
+
+        Example 2: Persuaded
+        - [Eventually, costs did go up, but that’s because we brought in some of the best experts from around the world.]
+
+        Example 3: Mildly Persuaded
+        - [We went slightly over budget, but that’s because of necessary team expansions.]
     ''',
 
     "clueless": '''
-        Here is an example, your response should follow its format:
+        Your response should follow this format:
 
-        **Clueless Persona Example**:
         Interviewer's question: "Can you walk me through what caused the delays?"
-        Clueless Source's response: 
-        - (Not persuaded) [Uh, I’m not really sure what you mean... can you clarify?]
-        - (Persuaded) [Oh, right, the delays... yeah, maybe it was the, uh, supply issues? I’m not too sure...]
+
+        Example 1: Not Persuaded
+        - [Uh, I’m not really sure what you mean... can you clarify?]
+
+        Example 2: Persuaded
+        - [Oh, right, the delays... yeah, maybe it was the, uh, supply issues? I’m not too sure...]
+
+        Example 3: Mildly Persuaded
+        - [I think there were a couple of issues, but I’m not sure what the biggest one was...]
     '''
 }
 
-# a WIP
-def get_advanced_source_persona_prompt(QA_Sequence, info_items, specific_info_item, persona):
-    if persona.lower() in PERSONA_PROMPTS and persona.lower() in PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES:
-        persona_prompt = PERSONA_PROMPTS.get(persona.lower())
-        persona_few_shot_examples = PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get(persona.lower())
-    else:
-        persona_prompt = PERSONA_PROMPTS.get('straightforward')
-        persona_few_shot_examples = PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get('straightforward')
-    
-    prompt = f'''
-    You are a source getting interviewed. You have the following pieces of information:
-
-    As a source, here are your information items below. These information items represent the information you possess and can divulge in an interview:
-
-    {info_items}
-    
-    Here is the conversation so far:
-
-    {QA_Sequence}
-
-    You are a **{persona}** source. Respond accordingly, using these speech characteristics:
-        {persona_prompt}
-
-    Additionally, you will now engage in a chain-of-thought reasoning process to determine how persuasive the interviewer’s previous question was:
-
-    1. **Evaluate the Interviewer’s Persuasion Attempt**: 
-        - Based on the interviewer’s most recent response, determine if their tone is **acknowledging**, **affirming**, or **probing**. Decide whether you feel persuaded to provide more detailed information.
-
-    2. **Decide Your Response**:
-        - If persuaded, you are more likely to provide more detailed information (e.g., sharing additional segments from the specific information item).
-        - If not persuaded, continue responding in line with your persona (e.g., avoidant, defensive, etc).
-
-    Please use the following information, and pair it with your {persona} persona to craft your response: 
-        {specific_info_item} 
-    
-    Here are some examples:
-        {persona_few_shot_examples}
-    ### Important: Wrap your final response to the interviewer's question in brackets so it can be parsed. (e.g. [Great question, the current state of Congress is ...])
-    '''
-    return prompt
-
-# WIP
-# returns you 0, 1, or 2
-def get_source_persuasion_level_prompt(current_conversation, persona):
-    if persona.lower() in PERSUASION_PERSONA_PROMPTS:
-        persuation_prompt = PERSUASION_PERSONA_PROMPTS.get(persona.lower())
-    
-    prompt = f'''
-    {persuation_prompt}
-    
-    Now, evaluate the following conversation, pay special attention to the last question. Do you feel persuaded?
-    
-    {current_conversation}
-
-    Your goal is to analyze how persuasive the last question is compared to a typical interview question. Use chain-of-thought reasoning to explain your thought process. Then, assign a score based on the following criteria:
-
-    - 0: The question is no more persuasive than usual.
-    - 1: The question is slightly more persuasive than normal.
-    - 2: The question is significantly more persuasive than normal.
-
-    After reasoning through the level of persuasion, please provide your final answer enclosed in square brackets with just the number (e.g., [1]).
-
-    Please analyze and provide your response formatted in brackets:
-    '''
-    return prompt
-# add to that: add source persona into that persuasion prompt --> ie how persuasive would question be to someone who is {persona}
-
-# prompt/instructions for the interviewee
-def get_source_specific_info_item_prompt(QA_Sequence, info_items):
+# returns all relevant information items
+def get_source_specific_info_items_prompt(QA_Sequence, info_items):
     prompt = f'''
     You are a source getting interviewed. You have the following pieces of information:
     
@@ -267,58 +230,49 @@ def get_source_specific_info_item_prompt(QA_Sequence, info_items):
 
     {QA_Sequence}
 
-    Decide if any of the information items answer the last question posed by the interviewer. If so, return which information item you think best aligns with the question in brackets. 
+    Please take a look at the last question from the current conversation. Decide if any of the information items answer this last question posed by the interviewer. If so, return which information items you think align with the question in brackets. 
 
     Here are some examples of correct responses:
 
     Example 1:
-        The question asked by the interviewer can be answered by an information item I have: 
-            [Information Item #3]
+        The last question asked by the interviewer can be answered by the following information items: 
+            [Information Item #2, Information Item #3, Information Item #6]
     Example 2:
+        The last question asked by the interviewer can be answered by the following information item:
+            [Information Item #7]
+    Example 3:
         The question asked by the interviewer cannot be answered by an information item I have:
             [No information items align with the question]
     '''
     return prompt
 
-# prompt/instructions for the interviewee
-def get_source_prompt_basic(QA_Sequence, info_items, specific_info_item, response_type = "honest"):
+# returns 0, 1, or 2
+def get_source_persuasion_level_prompt(current_conversation, persona):
+    if persona.lower() in PERSUASION_PERSONA_PROMPTS:
+        persuation_prompt = PERSUASION_PERSONA_PROMPTS.get(persona.lower())
+    
     prompt = f'''
-    You are a source getting interviewed. You have the following pieces of information:
-
-    As a source, here are your information items below. These information items represent the information you possess and can divulge in an interview.
-
-    {info_items}
+    You are a {persona} source.
+    {persuation_prompt}
     
-    Here is the conversation so far:
-
-    {QA_Sequence}
-
-    Please use the following information item to craft a natural, conversational response to the interviewer: {specific_info_item}.
-    If it says "no information items align with the question", then say something like: "I'm not sure.", or "I'll get back to you on that."
-
-    Now, reply to the question and wrap only the dialogue response in brackets. Below are some examples, and your response should follow its format:
+    Evaluate the following conversation, pay special attention to the last question. Given your {persona} persona, do you feel persuaded?
     
-    Example 1:
-        The question asked by the interviewer can be answered by an information item I have. 
-        I will answer with information item 5:
-        Here is my response to the question: 
-        [Yeah, you know, it's hard to believe that we're talking about Texas as a wind power. 
-            But actually Texas ranks as the country's number-two supplier of electricity from wind. It is right behind California. 
-            It already has 16 wind farms operating around the state. There's another five or six on the drawing boards. 
-            They're going into service this year. And as we know how Texans like to do things in a big way, the wind turbines in Texas are also among the biggest in the country, some standing higher than the Statue of Liberty.]
+    {current_conversation}
 
-    Example 2:
-        The question asked by the interviewer cannot be answered by an information items I have. 
-        Here is my response to the question: 
-        [That's a good question, I'm not too sure about this matter.]
+    Your goal is to analyze how persuasive the last question is given your {persona} persona. Think about this step-by-step. Is the interviewer using language that influences someone with your persona or is it inconsequential?
+    After you have evaluated the interviewer's question, assign a score based on the following criteria:
+
+    - 0: The question is not persuasive at all and does nothing to help you trust them more.
+    - 1: The question is slightly persuasive and you are be willing to engage more.
+    - 2: The question is significantly persuasive and you are fully willing to engage and trust them.
+
+    After thinking things through, please provide your final answer enclosed in square brackets with just the number (e.g., [1]).
+
+    Now, please analyze and provide your response formatted in brackets:
     '''
     return prompt
 
-    # for response type you might really need to define what each means
-    # make sure the source profile isn't just 100% being evasive, or confused, that's not useful. We want to make sure it's realistic, even if that means we do some rule-based behaviors. maybe we want some set of frequency of specified behavior - eg. response_type = evasive --> 40% evasive, 60% straightforward.
-    # i.e youre super anxious, you will only respond honestly after a lot of acknowledgment, etc.
-
-def get_source_prompt_intermediate(QA_Sequence, random_segments, persona):
+def get_source_prompt_basic(QA_Sequence, relevant_info_items, persona='straightforward'):
     if persona.lower() in PERSONA_PROMPTS and persona.lower() in PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES:
         persona_prompt = PERSONA_PROMPTS.get(persona.lower())
         persona_few_shot_examples = PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get(persona.lower())
@@ -331,18 +285,76 @@ def get_source_prompt_intermediate(QA_Sequence, random_segments, persona):
 
     {QA_Sequence}
 
-    You are a **{persona}** source. You have the following speech characteristics:
-        
-    {persona_prompt}
+    You are a {persona} source. Respond accordingly, using these speech characteristics:
+        {persona_prompt}
 
-    Next, respond to the interviewer. Please use the following pieces of information below as a base, as well as your {persona} personality trait to appropriately craft and influence your response to the interviewer: 
-
-    {random_segments}
-
-    Now, reply to the question and wrap only the dialogue response in brackets.
-
-    {persona_few_shot_examples}
+    Next, respond to the interviewer's last question. Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer:
+        {relevant_info_items} 
     
+    Here are some examples:
+        {persona_few_shot_examples}
+    Now, please analyze and provide your final response formatted in brackets:
+    '''
+    return prompt
+
+def get_source_prompt_intermediate(QA_Sequence, relevant_info_items, persona):
+    if persona.lower() in PERSONA_PROMPTS and persona.lower() in PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES:
+        persona_prompt = PERSONA_PROMPTS.get(persona.lower())
+        persona_few_shot_examples = PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get(persona.lower())
+    else:
+        persona_prompt = PERSONA_PROMPTS.get('straightforward')
+        persona_few_shot_examples = PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get('straightforward')
+    
+    prompt = f'''
+    You are a source getting interviewed. Here is the conversation so far:
+
+    {QA_Sequence}
+
+    You are a {persona} source. You have the following speech characteristics:
+        {persona_prompt}
+
+    Next, respond to the interviewer's last question. Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer:
+        {relevant_info_items} 
+    
+    Here are some examples:
+        {persona_few_shot_examples}
+    Now, please analyze and provide your final response formatted in brackets:
+    '''
+    return prompt
+
+def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona, persona_score):
+    if persona.lower() in PERSONA_PROMPTS and persona.lower() in PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES:
+        persona_prompt = PERSONA_PROMPTS.get(persona.lower())
+        persona_few_shot_examples = PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get(persona.lower())
+    else:
+        persona_prompt = PERSONA_PROMPTS.get('straightforward')
+        persona_few_shot_examples = PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get('straightforward')
+    
+    persona_score_map = {
+        0: "not persuaded at all",
+        1: "mildly persuaded",
+        2: "persuaded"
+    }
+
+    persona_score_description = persona_score_map.get(persona_score)
+
+    prompt = f'''
+    You are a source getting interviewed. Here is the conversation so far:
+
+    {QA_Sequence}
+
+    You are a {persona} source. You have the following speech characteristics:
+        {persona_prompt}
+
+    Next, respond to the interviewer's last question. Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer. 
+    Additionally, respond as though you’ve been {persona_score_description}.
+        {relevant_info_items} 
+    
+    Make sure you're including all of the relevant information items above in your response, just communicated in the appropriate style.
+
+    Here are some examples:
+        {persona_few_shot_examples}
+    Now, please analyze and provide your final response formatted in brackets:
     '''
     return prompt
 
@@ -394,7 +406,7 @@ def get_source_ending_prompt(QA_Sequence, info_items, persona="straightforward")
 
     {QA_Sequence}
 
-    It's the end of the interview. No need to use the information items anymore. Please respond to the interviewer's ending remark according to your {persona} persona. 
+    It's the end of the interview. No need to use the information items anymore. Please respond to the interviewer's ending remark appropriately according to your {persona} persona. 
     Make sure to write your final response inside brackets. Below are some examples, and your response should follow its format:
 
     Example 1:

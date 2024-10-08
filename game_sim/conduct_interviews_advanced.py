@@ -381,7 +381,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         persona = random.choice(persona_types)
         print(f"{PROMPT_COLOR}Randomly selected persona: {persona}{RESET}")
 
-    sample = df.iloc[0].copy()  # can change this to randomly sample an interview instead
+    sample = df.sample(n=1).iloc[0].copy()
     sample['info_items_dict'] = ast.literal_eval(sample['info_items_dict'])
     info_items = sample['info_items']
     outline = sample['outlines']
@@ -560,19 +560,18 @@ if __name__ == "__main__":
     project_root = find_project_root(current_path, 'news-interview-question-generation')
     dataset_path = os.path.join(project_root, "output_results/game_sim/outlines/final_df_with_outlines.csv")
     df = pd.read_csv(dataset_path)
-    df = df.head(10)
+    df = df.head(50)
     print(df)
-    # df has columns info_items and outlines
     num_turns = 4
-    # simulated_interviews = conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct")
-    
-    # print(f"dataset with simulated interviews: {simulated_interviews}\n")
-    # for i, interview in enumerate(simulated_interviews['final_conversations']):
-    #     print(f"Interview {i+1}:\n {interview}\n\n\n")
 
     # HUMAN EVAL:
     human_evaluation = human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-8b-instruct")
     print(human_evaluation)
+
+    # simulated_interviews = conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct")
+    # print(f"dataset with simulated interviews: {simulated_interviews}\n")
+    # for i, interview in enumerate(simulated_interviews['final_conversations']):
+    #     print(f"Interview {i+1}:\n {interview}\n\n\n")
 
 '''
 from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.

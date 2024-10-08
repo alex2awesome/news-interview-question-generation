@@ -31,13 +31,15 @@ def process_info_items(info_items_str):
     if current_key:
         info_dict[current_key] = ' '.join(current_value).strip()
 
-    return info_dict
+    info_dict_lower = {k.lower(): v for k, v in info_dict.items()}
+
+    return info_dict_lower
 
 if __name__ == "__main__": 
     print(f"generate_info_items_dict.py is Running...\n")
     current_path = os.path.dirname(os.path.abspath(__file__))
     project_root = find_project_root(current_path, 'news-interview-question-generation')
-    dataset_path = os.path.join(project_root, "output_results/game_sim/info_items/final_df_with_info_items.csv")
+    dataset_path = os.path.join(project_root, "output_results/game_sim/outlines/final_df_with_outlines.csv")
     
     output_dir = os.path.join(project_root, "output_results/game_sim/info_items_dict")
     os.makedirs(output_dir, exist_ok=True)

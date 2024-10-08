@@ -123,11 +123,9 @@ def sample_proportion_from_beta(persona, persuasion_level):
     Returns:
         float: A proportion between 0 and 1 sampled from the beta distribution.
     """
-
     a, b = PERSONA_DICT[persona][persuasion_level]
     proportion = beta.rvs(a, b)
     proportion = max(0.0, min(1.0, proportion))
-
     return proportion
 
 def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_advanced"):
@@ -298,14 +296,52 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
     final_df = stitch_csv_files(output_dir, 'all_advanced_interviews_conducted.csv')
     return final_df
 
-def get_relevant_info_items(info_item_numbers, info_items_dict):
-    relevant_items = []
+def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level):
+    """
+    Retrieves and samples relevant information items based on persona and persuasion level.
+
+    Parameters:
+        - info_item_numbers (list of int): List of information item numbers.
+        - info_items_dict (dict): Dictionary mapping "Information Item #X" to its content.
+        - persona (str): The persona of the source (e.g., 'anxious', 'avoidant', etc.).
+        - persuasion_level (int): The level of persuasion (0, 1, or 2).
+
+    Returns:
+        str: A formatted string of selected information items.
+    """
+    all_items = []
     for num in info_item_numbers:
-        key = f"Information Item #{num}"
-        item = info_items_dict.get(key, None)
-        if item:
-            relevant_items.append(f"{key}: {item}")
-    return "\n".join(relevant_items) if relevant_items else "No information items align with the question"
+        key = f"information item #{num}".lower()
+        content = info_items_dict.get(key, '')
+        if content:
+            all_items.append(f"Information Item #{num}: {content}")
+
+    if not all_items:
+        return "No information items align with the question"
+    proportion = sample_proportion_from_beta(persona, persuasion_level)
+    num_items = int(proportion * len(all_items))
+
+    # Ensure at least one item is selected if proportion > 0
+    if proportion > 0 and num_items == 0:
+        num_items = 1
+
+    # Randomly select the determined number of items
+    sampled_items = random.sample(all_items, num_items) if num_items > 0 else []
+
+    return "\n".join(sampled_items) if sampled_items else "No information items align with the question"
+
+def get_all_relevant_info_items(info_item_numbers, info_items_dict):
+    all_items = []
+    for num in info_item_numbers:
+        key = f"information item #{num}".lower()
+        content = info_items_dict.get(key, '')
+        if content:
+            all_items.append(f"Information Item #{num}: {content}")
+
+    if not all_items:
+        return "No information items align with the question"
+
+    return "\n".join(all_items) if all_items else "No information items align with the question"
 
 def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
     os.makedirs(output_dir, exist_ok=True)
@@ -331,7 +367,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         index = int(user_input) - 1
         if 0 <= index < len(persona_types):
             persona = persona_types[index]
-            print(f"You have selected: {persona}")
+            print(f"\nYou have selected: {persona}")
         else:
             print("Invalid selection. Randomly picking a persona for you.")
             persona = random.choice(persona_types)
@@ -341,7 +377,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         persona = random.choice(persona_types)
         print(f"Randomly selected persona: {persona}")
 
-    sample = df.iloc[0] # can change this to randomly sample an interview instead
+    sample = df.iloc[0].copy() # can change this to randomly sample an interview instead
     sample['info_items_dict'] = ast.literal_eval(sample['info_items_dict'])
     info_items = sample['info_items']
     outline = sample['outlines']
@@ -365,30 +401,27 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         source_response = generate_vllm_SOURCE_response_batch([starting_source_prompt], model, tokenizer)
         source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
         current_conversation += f"\nInterviewee: {source_answer}"
-        print(f"Interviewee (LLM): {source_answer}")
+        print(f"\nInterviewee (LLM): {source_answer}")
     else:
         starting_interviewer_prompt = get_interviewer_starting_prompt(outline, num_turns, "straightforward")
         interviewer_response = generate_vllm_INTERVIEWER_response_batch([starting_interviewer_prompt], model, tokenizer)
         interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
         current_conversation = f"Interviewer: {interviewer_question}"
-        print(f"Interviewer (LLM): {interviewer_question}")
+        print(f"\nInterviewer Starting Remark (LLM): {interviewer_question}")
         
-        source_prompt = get_source_starting_prompt(current_conversation, info_items, persona)
-        print(f"\n{source_prompt}")
-        print("No need to wrap your response in brackets, please disregard the last section above")
-        human_answer = input("Interviewee: ")
-        current_conversation += f"\n (Human) Interviewee: {human_answer}"
+        human_answer = input("Please respond accordingly: ")
+        current_conversation += f"\n(Human) Interviewee: {human_answer}"
 
     #### 2. Middle turns
     for turn in range(num_turns - 2):
         num_turns_left = num_turns - (1 + turn)
 
-        if role == "interviewer":
+        if role == "interviewer": # human is interviewer
             interviewer_prompt = get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
             print(f"\n{interviewer_prompt}")
             print("No need to wrap your response in brackets, please disregard the last section above")
             human_question = input("\nYour question (Interviewer): ")
-            current_conversation += f"\n (Human) Interviewer: {human_question}"
+            current_conversation += f"\n(Human) Interviewer: {human_question}"
 
             specific_info_items_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
             specific_info_items_response = generate_vllm_SOURCE_response_batch([specific_info_items_prompt], model, tokenizer)
@@ -400,40 +433,53 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
 
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)
             unique_info_items_set.update(info_item_numbers)
-            relevant_info_items_str = get_relevant_info_items(info_item_numbers, sample['info_items_dict'])
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
+            relevant_info_items_str = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int)
 
             source_prompt = get_source_persona_prompt_advanced(current_conversation, relevant_info_items_str, persona, persuasion_level_int)
             source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
             source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
             current_conversation += f"\nInterviewee: {source_answer}"
-            print(f"Interviewee (LLM): {source_answer}")
-        else:
+            print(f"\nInterviewee (LLM): {source_answer}")
+        else: # human is source
             interviewer_prompt = get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
             interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
             interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
             current_conversation += f"\nInterviewer: {interviewer_question}"
-            print(f"Interviewer (LLM): {interviewer_question}")
+            print(f"\nInterviewer (LLM): {interviewer_question}")
 
             specific_info_item_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
-            print(specific_info_item_prompt)
-            specific_info_items = input("Please pick the most relevant information items (multiple if appropriate, format choices as 'Information Item #X, Information Item #Y, ...'): ")
+            interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch([specific_info_item_prompt], model, tokenizer)
+            all_relevant_info_items = extract_text_inside_brackets(interviewee_specific_item_responses) if extract_information_item_numbers(extract_text_inside_brackets(interviewee_specific_item_responses)) else "No information items align with the question"
+            info_item_numbers = extract_information_item_numbers(all_relevant_info_items)
             
-            persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona)
-            print(persuasion_level_prompt)
-            persuasion_level = input("Please respond with 0, 1, or 2 (measuring persuasiveness): ")
-
-            info_item_numbers = extract_information_item_numbers(specific_info_items)
-            print(info_item_numbers)
-            unique_info_items_set.update(info_item_numbers)
-            relevant_info_items_str = get_relevant_info_items(info_item_numbers, sample['info_items_dict'])
+            human_persuation_criteria = '''
+                - 0: The question is not persuasive at all and does nothing to help you trust them more.
+                - 1: The question is slightly persuasive and you are be willing to engage more.
+                - 2: The question is significantly persuasive and you are fully willing to engage and trust them.
+            '''
+            print(f"\nPlease analyze the interviewer's last question. Given that you are a {persona} source, do you feel persuaded?\n\nEvaluate on the following criteria: \n\n {human_persuation_criteria}\n\n")
+            persuasion_level = input("\nNow, please respond with either 0, 1, or 2: ")
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
+            
+            sampled_relevant_info_items = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int)
+            human_source_prompt = f'''
 
-            source_prompt = get_source_persona_prompt_advanced(current_conversation, relevant_info_items_str, persona, persuasion_level_int)
-            print(f"\n{source_prompt}")
-            print("No need to wrap your response in brackets, please disregard the last section above")
-            human_answer = input("Your Response to Interviewer's Question: ")
-            current_conversation += f"\nInterviewee: {human_answer}"
+            Here is the list of relevant information items:
+                
+                {get_all_relevant_info_items(info_item_numbers, sample['info_items_dict'])}
+
+            From this list, we suggest you use the following information items (but you can choose others if you'd like):
+
+                {sampled_relevant_info_items}
+            '''
+            print(human_source_prompt)
+            human_specific_info_items = input("From the list of relevant information items, please input the ones you'll be using in your response to the interviewer.\n Please list just the number of the information item(s). \n(If there is more than one, please separate them by commas). \n\n e.g. 1, 2, 4, 5")
+            human_specific_info_item_numbers = [int(x) for x in human_specific_info_items.split(', ')]
+            unique_info_items_set.update(human_specific_info_item_numbers)
+
+            human_answer = input("Now, please respond to the interviewer's question: ")
+            current_conversation += f"\n(Human) Interviewee: {human_answer}"
 
     #### 3. FINAL interviewer question and source answer
     if role == "interviewer":
@@ -441,7 +487,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         print(f"\n{interviewer_prompt}")
         print("No need to wrap your response in brackets, please disregard the last section above")
         human_question = input("\nYour final remark (Interviewer): ")
-        current_conversation += f"\n (Human) Interviewer: {human_question}"
+        current_conversation += f"\n(Human) Interviewer: {human_question}"
 
         source_prompt = get_source_ending_prompt(current_conversation, persona)
         source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
@@ -453,13 +499,12 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
         interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
         current_conversation += f"\nInterviewer: {interviewer_question}"
-        print(f"Interviewer (LLM): {interviewer_question}")
+        print(f"\nInterviewer (LLM): {interviewer_question}")
 
-        source_prompt = get_source_ending_prompt(current_conversation, persona)
-        print(f"\n{source_prompt}")
-        print("No need to wrap your response in brackets, please disregard the last section above")
-        human_answer = input("Your final ending remark (Interviewee): ")
-        current_conversation += f"\n (Human) Interviewee: {human_answer}"
+        
+        print("This is the final remark of the interview.")
+        human_answer = input("Please input your final ending remark: ")
+        current_conversation += f"\n(Human) Interviewee: {human_answer}"
 
     print("\nFinal Interview Conversation:")
     print(current_conversation)
@@ -499,6 +544,7 @@ if __name__ == "__main__":
     # HUMAN EVAL:
     human_evaluation = human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-8b-instruct")
     print(human_evaluation)
+
 '''
 from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.
 column structure of the database outputted:

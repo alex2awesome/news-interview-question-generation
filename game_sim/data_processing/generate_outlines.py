@@ -6,7 +6,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, find_project_root
+from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, find_project_root, remove_text_before_keyword
 from game_sim_prompts import get_outline_followup_prompt, get_outline_only_prompt
 
 # ---- single use ---- #
@@ -79,8 +79,7 @@ def extract_outlines_only_batch(outlines, model, tokenizer, batch_size=100):
         batch = outlines[i:i+batch_size]
         prompts = [get_outline_only_prompt(outline) for outline in batch]
         batch_responses = generate_vllm_outline_only_batch(prompts, model, tokenizer)
-        objective_responses = [extract_text_inside_brackets(response) for response in batch_responses]
-        objectives.extend(objective_responses)
+        objectives.extend(batch_responses)
     
     return objectives
 
@@ -92,10 +91,11 @@ def process_outlines(df, model_name="meta-llama/Meta-Llama-3-70B-Instruct", outp
     tokenizer = initialize_tokenizer(model_name)
 
     print("Generating outlines with follow-ups...")
-    outlines_with_followups = extract_outlines_followup_batch(df['combined_dialogue'], model, tokenizer)
+    df['outlines_with_followups'] = extract_outlines_followup_batch(df['combined_dialogue'], model, tokenizer)
 
     print("Extracting only objectives from outlines...")
-    df['outlines'] = extract_outlines_only_batch(outlines_with_followups, model, tokenizer)
+    df['outlines'] = extract_outlines_only_batch(df['outlines_with_followups'], model, tokenizer)
+    df['outlines'] = df['outlines'].apply(remove_text_before_keyword)
     
     output_file_path = os.path.join(output_dir, "final_df_with_outlines.csv")
     df.to_csv(output_file_path, index=False)

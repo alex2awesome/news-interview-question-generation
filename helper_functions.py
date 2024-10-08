@@ -149,6 +149,25 @@ def combine_csv_files(directory_path, output_file_name):
     combined_df.to_csv(output_file_name, index=False)
     print(f"Combined CSV saved to {output_file_name}")
 
+def remove_text_before_keyword(text, keyword="Source biography:"):
+    """
+    Removes all text before the specified keyword in the input string.
+
+    Parameters:
+    - text (str): The original text.
+    - keyword (str): The keyword to search for.
+
+    Returns:
+    - str: The cleaned text starting from the keyword.
+    """
+    if pd.isna(text):
+        return text
+    index = text.find(keyword)
+    if index != -1:
+        return text[index:]
+    else:
+        return text
+
 # ------------- extract data section ------------- #
 
 # given "ABC[XYZ]EFG", return "XYZ"

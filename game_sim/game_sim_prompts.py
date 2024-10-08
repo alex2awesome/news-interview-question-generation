@@ -649,7 +649,7 @@ def get_outline_only_prompt(outline_text):
 
     Here are some examples:
     
-    Example 1:
+    get_Example 1:
     Input:
     [
         Source biography: Jane Doe is a technology expert and author.

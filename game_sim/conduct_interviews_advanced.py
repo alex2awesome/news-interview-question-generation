@@ -349,6 +349,7 @@ ERROR_COLOR = "\033[91m"         # Red
 
 def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
     os.makedirs(output_dir, exist_ok=True)
+    
     role = input(f"{PROMPT_COLOR}Would you like to play as the interviewer (A) or source (B)? Please type 'A' or 'B': {RESET}").upper()
     while role not in ["A", "B"]:
         role = input(f"{ERROR_COLOR}Invalid input. Please type 'A' for interviewer or 'B' for source: {RESET}").upper()
@@ -381,7 +382,20 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         persona = random.choice(persona_types)
         print(f"{PROMPT_COLOR}Randomly selected persona: {persona}{RESET}")
 
-    sample = df.sample(n=1).iloc[0].copy()
+    used_ids = set()
+    interview_id_pattern = re.compile(r"^interview_(\d+)_human_[AB]_vs_LLM\.csv$")
+
+    for filename in os.listdir(output_dir):
+        match = interview_id_pattern.match(filename)
+        if match:
+            used_id = match.group(1)
+            used_ids.add(used_id)
+    available_df = df[~df['id'].astype(str).isin(used_ids)].copy()
+
+    if available_df.empty:
+        print(f"{ERROR_COLOR}All interviews from this dataframe have been conducted. No more unique interviews available.{RESET}")
+        return None 
+    sample = available_df.sample(n=1).iloc[0].copy()
     sample['info_items_dict'] = ast.literal_eval(sample['info_items_dict'])
     info_items = sample['info_items']
     outline = sample['outlines']
@@ -549,7 +563,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         'total_info_item_count': [total_info_item_count],
     })
 
-    output_path = os.path.join(output_dir, f"human_{role}_vs_LLM_interview_{sample['id']}.csv")
+    output_path = os.path.join(output_dir, f"interview_{sample['id']}_human_{role}_vs_LLM.csv")
     output_df.to_csv(output_path, index=False)
     print(f"{PROMPT_COLOR}Interview saved to {output_path}{RESET}")
 

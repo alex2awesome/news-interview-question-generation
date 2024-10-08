@@ -293,7 +293,7 @@ def get_source_prompt_basic(QA_Sequence, relevant_info_items, persona='straightf
     
     Here are some examples:
         {persona_few_shot_examples}
-    Now, please analyze and provide your final response formatted in brackets:
+    Now, please analyze and provide your final response to the interview's question formatted in brackets:
     '''
     return prompt
 
@@ -318,7 +318,7 @@ def get_source_prompt_intermediate(QA_Sequence, relevant_info_items, persona):
     
     Here are some examples:
         {persona_few_shot_examples}
-    Now, please analyze and provide your final response formatted in brackets:
+    Now, please analyze and provide your final response to the interview's question formatted in brackets:
     '''
     return prompt
 
@@ -354,7 +354,7 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
 
     Here are some examples:
         {persona_few_shot_examples}
-    Now, please analyze and provide your final response formatted in brackets:
+    Now, please analyze and provide your final response to the interview's question formatted in brackets:
     '''
     return prompt
 

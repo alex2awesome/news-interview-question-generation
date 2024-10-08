@@ -297,18 +297,6 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
     return final_df
 
 def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level, used_info_items):
-    """
-    Retrieves and samples relevant information items based on persona and persuasion level.
-
-    Parameters:
-        - info_item_numbers (list of int): List of information item numbers.
-        - info_items_dict (dict): Dictionary mapping "Information Item #X" to its content.
-        - persona (str): The persona of the source (e.g., 'anxious', 'avoidant', etc.).
-        - persuasion_level (int): The level of persuasion (0, 1, or 2).
-
-    Returns:
-        str: A formatted string of selected information items.
-    """
     available_items = []
     for num in info_item_numbers:
         if num not in used_info_items:
@@ -317,7 +305,7 @@ def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuas
             if content:
                 available_items.append((num, f"Information Item #{num}: {content}"))
     N = len(info_item_numbers)
-    k = len([num for num in info_item_numbers if num in used_info_items]) # used items
+    k = len([num for num in info_item_numbers if num in used_info_items]) # num of used items
     available = N - k
 
     if available == 0:
@@ -351,6 +339,13 @@ def get_all_relevant_info_items(info_item_numbers, info_items_dict):
         return "No information items align with the question"
 
     return "\n".join(all_items) if all_items else "No information items align with the question"
+
+# ANSI escape codes for colors
+RESET = "\033[0m"        # Resets the color
+INTERVIEWER_COLOR = "\033[94m"  # Blue
+SOURCE_COLOR = "\033[92m"        # Green
+PROMPT_COLOR = "\033[93m"        # Yellow
+ERROR_COLOR = "\033[91m"         # Red
 
 def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
     os.makedirs(output_dir, exist_ok=True)
@@ -399,26 +394,35 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
     tokenizer = initialize_tokenizer(model_name)
 
     #### 1. FIRST interviewer question and source answer
-    if role == "interviewer":
-        interviewer_prompt = get_interviewer_starting_prompt(outline, num_turns, "straightforward")
+    if role == "interviewer": # human is interviewer
+        interviewer_prompt = f'''
+        It's the beginning of the interview.
+
+        Here is the outline of objectives you've prepared before the interview:
+
+        {outline}
+
+        Use this outline to help you extract as much information from the source as possible.
+        '''
         print(f"\n{interviewer_prompt}")
-        print("No need to wrap your response in brackets, please disregard the last section above")
-        human_question = input("Interviewer: ")
+        human_question = input("\n\nYou only have time for {num_turns} questions. Now, please input your starting remark: ")
         current_conversation = f"(Human) Interviewer: {human_question}"
         
         starting_source_prompt = get_source_starting_prompt(current_conversation, info_items, persona)
         source_response = generate_vllm_SOURCE_response_batch([starting_source_prompt], model, tokenizer)
         source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
         current_conversation += f"\nInterviewee: {source_answer}"
-        print(f"\nInterviewee (LLM): {source_answer}")
-    else:
+        print(f"\nInterviewee (LLM): {source_answer}\n")
+    else: # human is source
         starting_interviewer_prompt = get_interviewer_starting_prompt(outline, num_turns, "straightforward")
         interviewer_response = generate_vllm_INTERVIEWER_response_batch([starting_interviewer_prompt], model, tokenizer)
         interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
         current_conversation = f"Interviewer: {interviewer_question}"
-        print(f"\nInterviewer Starting Remark (LLM): {interviewer_question}")
+        print(f"\nInterviewer Starting Remark (LLM): {interviewer_question}\n")
+
+        print(f"\n\nHere are all the information items you have in this interview. These represent the relevant information at your disposal to divulge to the interviewer: \n\n{info_items}")
         
-        human_answer = input("Please respond accordingly: ")
+        human_answer = input("\n\nPlease respond accordingly: ")
         current_conversation += f"\n(Human) Interviewee: {human_answer}"
 
     #### 2. Middle turns
@@ -426,10 +430,14 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         num_turns_left = num_turns - (1 + turn)
 
         if role == "interviewer": # human is interviewer
-            interviewer_prompt = get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
-            print(f"\n{interviewer_prompt}")
-            print("No need to wrap your response in brackets, please disregard the last section above")
-            human_question = input("\nYour question (Interviewer): ")
+            interviewer_prompt = '''
+            Assess whether your previous question was fully answered and whether you can move on to the next one.
+            Analyze the source's most recent response and identify their likely emotional/cognitive state (and persona).
+            Based on the detected persona, decide how to proceed with your questioning.
+            Now, formulate a question that will best guide the source based on their current persona.
+            '''
+            print(f"\n{interviewer_prompt}\n")
+            human_question = input(f"\n\n You have {num_turns_left} questions left. Please ask your next question: ")
             current_conversation += f"\n(Human) Interviewer: {human_question}"
 
             specific_info_items_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
@@ -442,7 +450,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
 
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
-            relevant_info_items_str, sampled_item_numbers = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int)
+            relevant_info_items_str, sampled_item_numbers = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int, unique_info_items_set)
             unique_info_items_set.update(sampled_item_numbers)
 
             source_prompt = get_source_persona_prompt_advanced(current_conversation, relevant_info_items_str, persona, persuasion_level_int)
@@ -455,11 +463,11 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
             interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
             interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
             current_conversation += f"\nInterviewer: {interviewer_question}"
-            print(f"\nInterviewer (LLM): {interviewer_question}")
+            print(f"\nInterviewer (LLM): {interviewer_question}\n\n")
 
             specific_info_item_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
             interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch([specific_info_item_prompt], model, tokenizer)
-            all_relevant_info_items = extract_text_inside_brackets(interviewee_specific_item_responses) if extract_information_item_numbers(extract_text_inside_brackets(interviewee_specific_item_responses)) else "No information items align with the question"
+            all_relevant_info_items = extract_text_inside_brackets(interviewee_specific_item_responses[0]) if extract_information_item_numbers(extract_text_inside_brackets(interviewee_specific_item_responses[0])) else "No information items align with the question"
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items) # list of numbers
             
             human_persuation_criteria = '''
@@ -471,7 +479,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
             persuasion_level = input("\nNow, please respond with either 0, 1, or 2: ")
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
             
-            sampled_relevant_info_items, sampled_item_numbers = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int)
+            sampled_relevant_info_items, sampled_item_numbers = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int, unique_info_items_set)
             human_source_prompt = f'''
 
             Here is the list of relevant information items:
@@ -484,7 +492,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
             {sampled_relevant_info_items}
             '''
             print(human_source_prompt)
-            human_specific_info_items = input("\n\nFrom the list of relevant information items, please input the ones you'll be using in your response to the interviewer.\n Please list just the number of the information item(s). \n(If there is more than one, please separate them by commas e.g. 1, 2, 4, 5).\n\n")
+            human_specific_info_items = input("\n\nFrom the list of relevant information items, please input the ones you'll be using in your response to the interviewer.\nPlease list just the number of the information item(s).\n(If there is more than one, please separate them by commas e.g. 1, 2, 4, 5):")
             human_specific_info_item_numbers = [int(x) for x in human_specific_info_items.split(', ')]
             unique_info_items_set.update(human_specific_info_item_numbers)
 
@@ -493,10 +501,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
 
     #### 3. FINAL interviewer question and source answer
     if role == "interviewer":
-        interviewer_prompt = get_interviewer_ending_prompt(current_conversation, outline, "straightforward")
-        print(f"\n{interviewer_prompt}")
-        print("No need to wrap your response in brackets, please disregard the last section above")
-        human_question = input("\nYour final remark (Interviewer): ")
+        human_question = input("\n\nIt's time to end this interview. Please input your final remark (Interviewer): ")
         current_conversation += f"\n(Human) Interviewer: {human_question}"
 
         source_prompt = get_source_ending_prompt(current_conversation, persona)
@@ -509,10 +514,8 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
         interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
         current_conversation += f"\nInterviewer: {interviewer_question}"
-        print(f"\nInterviewer (LLM): {interviewer_question}")
+        print(f"\nInterviewer (LLM): {interviewer_question}\n")
 
-        
-        print("This is the final remark of the interview.")
         human_answer = input("Please input your final ending remark: ")
         current_conversation += f"\n(Human) Interviewee: {human_answer}"
 
@@ -526,7 +529,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
     'outlines': sample['outlines'],
     'persona chosen': [persona],
     'final_conversation': [current_conversation],
-    'info_item_numbers_used': unique_info_items_set,
+    'info_item_numbers_used': [unique_info_items_set],
     'total_info_items_extracted': [len(unique_info_items_set)],
     'total_info_item_count': [total_info_item_count],
     })

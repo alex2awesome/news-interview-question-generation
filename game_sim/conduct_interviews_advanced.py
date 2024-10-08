@@ -349,39 +349,39 @@ ERROR_COLOR = "\033[91m"         # Red
 
 def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
     os.makedirs(output_dir, exist_ok=True)
-    role = input("Would you like to play as the interviewer (A) or source (B)? Please type 'A' or 'B': ").upper()
+    role = input(f"{PROMPT_COLOR}Would you like to play as the interviewer (A) or source (B)? Please type 'A' or 'B': {RESET}").upper()
     while role not in ["A", "B"]:
-        role = input("Invalid input. Please type 'A' for interviewer or 'B' for source: ").upper()
+        role = input(f"{ERROR_COLOR}Invalid input. Please type 'A' for interviewer or 'B' for source: {RESET}").upper()
     role = "interviewer" if role == "A" else "source"
-    print(f"\nYou've chosen to play as the {role}.\n")
+    print(f"\n{PROMPT_COLOR}You've chosen to play as the {role}.{RESET}\n")
 
     persona_types = ["avoidant", "defensive", "straightforward", "poor explainer", "dominating", "clueless"]
     if role == 'interviewer':
-        print("Please choose a source persona to play against.")
+        print(f"{PROMPT_COLOR}Please choose a source persona to play against.{RESET}")
     else:
-        print("Please choose your source persona.")
+        print(f"{PROMPT_COLOR}Please choose your source persona.{RESET}")
 
-    print("Here are your options:")
+    print(f"{PROMPT_COLOR}Here are your options:{RESET}")
     for idx, persona_name in enumerate(persona_types):
-        print(f"{idx + 1}. {persona_name}")
+        print(f"{PROMPT_COLOR}{idx + 1}. {persona_name}{RESET}")
 
-    user_input = input("Pick a persona (please type a number from 1 to 6): ")
+    user_input = input(f"{PROMPT_COLOR}Pick a persona (please type a number from 1 to 6): {RESET}")
 
     try:
         index = int(user_input) - 1
         if 0 <= index < len(persona_types):
             persona = persona_types[index]
-            print(f"\nYou have selected: {persona}")
+            print(f"\n{PROMPT_COLOR}You have selected: {persona}{RESET}")
         else:
-            print("Invalid selection. Randomly picking a persona for you.")
+            print(f"{ERROR_COLOR}Invalid selection. Randomly picking a persona for you.{RESET}")
             persona = random.choice(persona_types)
-            print(f"Randomly selected persona: {persona}")
+            print(f"{PROMPT_COLOR}Randomly selected persona: {persona}{RESET}")
     except ValueError:
-        print("Invalid input. Randomly picking a persona for you.")
+        print(f"{ERROR_COLOR}Invalid input. Randomly picking a persona for you.{RESET}")
         persona = random.choice(persona_types)
-        print(f"Randomly selected persona: {persona}")
+        print(f"{PROMPT_COLOR}Randomly selected persona: {persona}{RESET}")
 
-    sample = df.iloc[0].copy() # can change this to randomly sample an interview instead
+    sample = df.iloc[0].copy()  # can change this to randomly sample an interview instead
     sample['info_items_dict'] = ast.literal_eval(sample['info_items_dict'])
     info_items = sample['info_items']
     outline = sample['outlines']
@@ -394,50 +394,50 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
     tokenizer = initialize_tokenizer(model_name)
 
     #### 1. FIRST interviewer question and source answer
-    if role == "interviewer": # human is interviewer
+    if role == "interviewer":  # human is interviewer
         interviewer_prompt = f'''
-        It's the beginning of the interview.
+        {PROMPT_COLOR}It's the beginning of the interview.
 
         Here is the outline of objectives you've prepared before the interview:
 
         {outline}
 
-        Use this outline to help you extract as much information from the source as possible.
+        Use this outline to help you extract as much information from the source as possible.{RESET}
         '''
         print(f"\n{interviewer_prompt}")
-        human_question = input("\n\nYou only have time for {num_turns} questions. Now, please input your starting remark: ")
+        human_question = input(f"\n\n{INTERVIEWER_COLOR}You only have time for {num_turns} questions. Now, please input your starting remark: {RESET}")
         current_conversation = f"(Human) Interviewer: {human_question}"
-        
+
         starting_source_prompt = get_source_starting_prompt(current_conversation, info_items, persona)
         source_response = generate_vllm_SOURCE_response_batch([starting_source_prompt], model, tokenizer)
         source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
         current_conversation += f"\nInterviewee: {source_answer}"
-        print(f"\nInterviewee (LLM): {source_answer}\n")
-    else: # human is source
+        print(f"\n{SOURCE_COLOR}Interviewee (LLM): {source_answer}{RESET}\n")
+    else:  # human is source
         starting_interviewer_prompt = get_interviewer_starting_prompt(outline, num_turns, "straightforward")
         interviewer_response = generate_vllm_INTERVIEWER_response_batch([starting_interviewer_prompt], model, tokenizer)
         interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
         current_conversation = f"Interviewer: {interviewer_question}"
-        print(f"\nInterviewer Starting Remark (LLM): {interviewer_question}\n")
+        print(f"\n{INTERVIEWER_COLOR}Interviewer Starting Remark (LLM): {interviewer_question}{RESET}\n")
 
-        print(f"\n\nHere are all the information items you have in this interview. These represent the relevant information at your disposal to divulge to the interviewer: \n\n{info_items}")
+        print(f"\n\n{PROMPT_COLOR}Here are all the information items you have in this interview. These represent the relevant information at your disposal to divulge to the interviewer: \n\n{info_items}{RESET}")
         
-        human_answer = input("\n\nPlease respond accordingly: ")
+        human_answer = input(f"\n\n{SOURCE_COLOR}Please respond accordingly: {RESET}")
         current_conversation += f"\n(Human) Interviewee: {human_answer}"
 
     #### 2. Middle turns
     for turn in range(num_turns - 2):
         num_turns_left = num_turns - (1 + turn)
 
-        if role == "interviewer": # human is interviewer
+        if role == "interviewer":  # human is interviewer
             interviewer_prompt = '''
-            Assess whether your previous question was fully answered and whether you can move on to the next one.
+            {PROMPT_COLOR}Assess whether your previous question was fully answered and whether you can move on to the next one.
             Analyze the source's most recent response and identify their likely emotional/cognitive state (and persona).
             Based on the detected persona, decide how to proceed with your questioning.
-            Now, formulate a question that will best guide the source based on their current persona.
+            Now, formulate a question that will best guide the source based on their current persona.{RESET}
             '''
             print(f"\n{interviewer_prompt}\n")
-            human_question = input(f"\n\n You have {num_turns_left} questions left. Please ask your next question: ")
+            human_question = input(f"\n\n{INTERVIEWER_COLOR}You have {num_turns_left} questions left. Please ask your next question: {RESET}")
             current_conversation += f"\n(Human) Interviewer: {human_question}"
 
             specific_info_items_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
@@ -450,93 +450,108 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
 
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
-            relevant_info_items_str, sampled_item_numbers = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int, unique_info_items_set)
+            relevant_info_items_str, sampled_item_numbers = get_relevant_info_items(
+                info_item_numbers, 
+                sample['info_items_dict'], 
+                persona, 
+                persuasion_level_int, 
+                unique_info_items_set
+            )
             unique_info_items_set.update(sampled_item_numbers)
 
             source_prompt = get_source_persona_prompt_advanced(current_conversation, relevant_info_items_str, persona, persuasion_level_int)
             source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
             source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
             current_conversation += f"\nInterviewee: {source_answer}"
-            print(f"\nInterviewee (LLM): {source_answer}")
-        else: # human is source
+            print(f"\n{SOURCE_COLOR}Interviewee (LLM): {source_answer}{RESET}")
+        else:  # human is source
             interviewer_prompt = get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
             interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
             interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
             current_conversation += f"\nInterviewer: {interviewer_question}"
-            print(f"\nInterviewer (LLM): {interviewer_question}\n\n")
+            print(f"\n{INTERVIEWER_COLOR}Interviewer (LLM): {interviewer_question}{RESET}\n\n")
 
             specific_info_item_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
             interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch([specific_info_item_prompt], model, tokenizer)
             all_relevant_info_items = extract_text_inside_brackets(interviewee_specific_item_responses[0]) if extract_information_item_numbers(extract_text_inside_brackets(interviewee_specific_item_responses[0])) else "No information items align with the question"
-            info_item_numbers = extract_information_item_numbers(all_relevant_info_items) # list of numbers
+            info_item_numbers = extract_information_item_numbers(all_relevant_info_items)  # list of numbers
             
             human_persuation_criteria = '''
-                - 0: The question is not persuasive at all and does nothing to help you trust them more.
-                - 1: The question is slightly persuasive and you are be willing to engage more.
-                - 2: The question is significantly persuasive and you are fully willing to engage and trust them.
+            {PROMPT_COLOR}- 0: The question is not persuasive at all and does nothing to help you trust them more.
+            - 1: The question is slightly persuasive and you are be willing to engage more.
+            - 2: The question is significantly persuasive and you are fully willing to engage and trust them.{RESET}
             '''
-            print(f"\nPlease analyze the interviewer's last question. Given that you are a {persona} source, do you feel persuaded?\n\nEvaluate on the following criteria: \n\n {human_persuation_criteria}\n\n")
-            persuasion_level = input("\nNow, please respond with either 0, 1, or 2: ")
+            print(f"\nPlease analyze the interviewer's last question. Given that you are a {persona} source, do you feel persuaded?\n\nEvaluate on the following criteria: \n\n{human_persuation_criteria}\n\n")
+            persuasion_level = input(f"\n{PROMPT_COLOR}Now, please respond with either 0, 1, or 2: {RESET}")
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
             
-            sampled_relevant_info_items, sampled_item_numbers = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int, unique_info_items_set)
-            human_source_prompt = f'''
+            sampled_relevant_info_items_str, sampled_item_numbers = get_relevant_info_items(
+                info_item_numbers, 
+                sample['info_items_dict'], 
+                persona, 
+                persuasion_level_int, 
+                unique_info_items_set
+            )
+            unique_info_items_set.update(sampled_item_numbers)
 
-            Here is the list of relevant information items:
+            human_source_prompt = f'''
+            {PROMPT_COLOR}Here is the list of relevant information items:
                 
             {get_all_relevant_info_items(info_item_numbers, sample['info_items_dict'])}
 
-            
             From this list, we suggest you use the following information items (but you can choose others if you'd like):
 
-            {sampled_relevant_info_items}
+            {sampled_relevant_info_items_str}{RESET}
             '''
             print(human_source_prompt)
-            human_specific_info_items = input("\n\nFrom the list of relevant information items, please input the ones you'll be using in your response to the interviewer.\nPlease list just the number of the information item(s).\n(If there is more than one, please separate them by commas e.g. 1, 2, 4, 5):")
-            human_specific_info_item_numbers = [int(x) for x in human_specific_info_items.split(', ')]
-            unique_info_items_set.update(human_specific_info_item_numbers)
+            human_specific_info_items = input(f"\n\n{SOURCE_COLOR}From the list of relevant information items, please input the ones you'll be using in your response to the interviewer.\nPlease list just the number of the information item(s).\n(If there is more than one, please separate them by commas e.g. 1, 2, 4, 5):{RESET}")
+            try:
+                human_specific_info_item_numbers = [int(x.strip()) for x in human_specific_info_items.split(',') if x.strip().isdigit()]
+                unique_info_items_set.update(human_specific_info_item_numbers)
+            except ValueError:
+                print(f"{ERROR_COLOR}Invalid input. No information items will be added.{RESET}")
 
-            human_answer = input("Now, please respond to the interviewer's question: ")
+            human_answer = input(f"{SOURCE_COLOR}Now, please respond to the interviewer's question: {RESET}")
             current_conversation += f"\n(Human) Interviewee: {human_answer}"
 
     #### 3. FINAL interviewer question and source answer
     if role == "interviewer":
-        human_question = input("\n\nIt's time to end this interview. Please input your final remark (Interviewer): ")
+        human_question = input(f"\n\n{INTERVIEWER_COLOR}It's time to end this interview. Please input your final remark (Interviewer): {RESET}")
         current_conversation += f"\n(Human) Interviewer: {human_question}"
 
         source_prompt = get_source_ending_prompt(current_conversation, persona)
         source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
         source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
         current_conversation += f"\nInterviewee: {source_answer}"
-        print(f"Interviewee (LLM): {source_answer}")
+        print(f"{SOURCE_COLOR}Interviewee (LLM): {source_answer}{RESET}")
     else:
         interviewer_prompt = get_interviewer_ending_prompt(current_conversation, outline, "straightforward")
         interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
         interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
         current_conversation += f"\nInterviewer: {interviewer_question}"
-        print(f"\nInterviewer (LLM): {interviewer_question}\n")
+        print(f"\n{INTERVIEWER_COLOR}Interviewer (LLM): {interviewer_question}{RESET}\n")
 
-        human_answer = input("Please input your final ending remark: ")
+        human_answer = input(f"{SOURCE_COLOR}Please input your final ending remark: {RESET}")
         current_conversation += f"\n(Human) Interviewee: {human_answer}"
 
-    print("\nFinal Interview Conversation:")
+    print(f"\n{PROMPT_COLOR}Final Interview Conversation:{RESET}")
     print(current_conversation)
 
     output_df = pd.DataFrame({
-    'id': sample['id'],
-    'combined_dialogue': sample['combined_dialogue'],
-    'info_items': sample['info_items'],
-    'outlines': sample['outlines'],
-    'persona chosen': [persona],
-    'final_conversation': [current_conversation],
-    'info_item_numbers_used': [unique_info_items_set],
-    'total_info_items_extracted': [len(unique_info_items_set)],
-    'total_info_item_count': [total_info_item_count],
+        'id': sample['id'],
+        'combined_dialogue': sample['combined_dialogue'],
+        'info_items': sample['info_items'],
+        'outlines': sample['outlines'],
+        'persona chosen': [persona],
+        'final_conversation': [current_conversation],
+        'info_item_numbers_used': [unique_info_items_set],
+        'total_info_items_extracted': [len(unique_info_items_set)],
+        'total_info_item_count': [total_info_item_count],
     })
 
     output_path = os.path.join(output_dir, f"human_{role}_vs_LLM_interview_{sample['id']}.csv")
     output_df.to_csv(output_path, index=False)
-    print(f"Interview saved to {output_path}")
+    print(f"{PROMPT_COLOR}Interview saved to {output_path}{RESET}")
 
     return output_df
 

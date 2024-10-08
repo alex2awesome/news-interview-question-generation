@@ -296,7 +296,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
     final_df = stitch_csv_files(output_dir, 'all_advanced_interviews_conducted.csv')
     return final_df
 
-def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level):
+def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level, used_info_items):
     """
     Retrieves and samples relevant information items based on persona and persuasion level.
 
@@ -309,26 +309,35 @@ def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuas
     Returns:
         str: A formatted string of selected information items.
     """
-    all_items = []
+    available_items = []
     for num in info_item_numbers:
-        key = f"information item #{num}".lower()
-        content = info_items_dict.get(key, '')
-        if content:
-            all_items.append(f"Information Item #{num}: {content}")
+        if num not in used_info_items:
+            key = f"information item #{num}".lower()
+            content = info_items_dict.get(key, '')
+            if content:
+                available_items.append((num, f"Information Item #{num}: {content}"))
+    N = len(info_item_numbers)
+    k = len([num for num in info_item_numbers if num in used_info_items]) # used items
+    available = N - k
 
-    if not all_items:
+    if available == 0:
+        return "All relevant information has been given to the interviewer already!", []  
+    if not available_items:
         return "No information items align with the question"
     proportion = sample_proportion_from_beta(persona, persuasion_level)
-    num_items = int(proportion * len(all_items))
+    num_items = int(proportion * N)
+    if num_items > available:
+        num_items = available
 
-    # Ensure at least one item is selected if proportion > 0
-    if proportion > 0 and num_items == 0:
-        num_items = 1
-
-    # Randomly select the determined number of items
-    sampled_items = random.sample(all_items, num_items) if num_items > 0 else []
-
-    return "\n".join(sampled_items) if sampled_items else "No information items align with the question"
+    if num_items > 0:
+        sampled = random.sample(available_items, num_items)
+        sampled_items_str = "\n".join(item[1] for item in sampled)
+        sampled_item_numbers = [item[0] for item in sampled]
+        return sampled_items_str, sampled_item_numbers
+    elif int(proportion * N) == 0:
+        return "No relevant information for this question. Feel free to ramble and say nothing important.", []
+    else:
+        return "No relevant information for this question. Feel free to ramble and say nothing important.", []
 
 def get_all_relevant_info_items(info_item_numbers, info_items_dict):
     all_items = []
@@ -432,9 +441,9 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
             persuasion_level = extract_text_inside_brackets(persuasion_level_response[0]) or "0"
 
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)
-            unique_info_items_set.update(info_item_numbers)
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
-            relevant_info_items_str = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int)
+            relevant_info_items_str, sampled_item_numbers = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int)
+            unique_info_items_set.update(sampled_item_numbers)
 
             source_prompt = get_source_persona_prompt_advanced(current_conversation, relevant_info_items_str, persona, persuasion_level_int)
             source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
@@ -451,7 +460,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
             specific_info_item_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
             interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch([specific_info_item_prompt], model, tokenizer)
             all_relevant_info_items = extract_text_inside_brackets(interviewee_specific_item_responses) if extract_information_item_numbers(extract_text_inside_brackets(interviewee_specific_item_responses)) else "No information items align with the question"
-            info_item_numbers = extract_information_item_numbers(all_relevant_info_items)
+            info_item_numbers = extract_information_item_numbers(all_relevant_info_items) # list of numbers
             
             human_persuation_criteria = '''
                 - 0: The question is not persuasive at all and does nothing to help you trust them more.
@@ -462,19 +471,20 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
             persuasion_level = input("\nNow, please respond with either 0, 1, or 2: ")
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
             
-            sampled_relevant_info_items = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int)
+            sampled_relevant_info_items, sampled_item_numbers = get_relevant_info_items(info_item_numbers, sample['info_items_dict'], persona, persuasion_level_int)
             human_source_prompt = f'''
 
             Here is the list of relevant information items:
                 
-                {get_all_relevant_info_items(info_item_numbers, sample['info_items_dict'])}
+            {get_all_relevant_info_items(info_item_numbers, sample['info_items_dict'])}
 
+            
             From this list, we suggest you use the following information items (but you can choose others if you'd like):
 
-                {sampled_relevant_info_items}
+            {sampled_relevant_info_items}
             '''
             print(human_source_prompt)
-            human_specific_info_items = input("From the list of relevant information items, please input the ones you'll be using in your response to the interviewer.\n Please list just the number of the information item(s). \n(If there is more than one, please separate them by commas). \n\n e.g. 1, 2, 4, 5")
+            human_specific_info_items = input("\n\nFrom the list of relevant information items, please input the ones you'll be using in your response to the interviewer.\n Please list just the number of the information item(s). \n(If there is more than one, please separate them by commas e.g. 1, 2, 4, 5).\n\n")
             human_specific_info_item_numbers = [int(x) for x in human_specific_info_items.split(', ')]
             unique_info_items_set.update(human_specific_info_item_numbers)
 
@@ -516,6 +526,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
     'outlines': sample['outlines'],
     'persona chosen': [persona],
     'final_conversation': [current_conversation],
+    'info_item_numbers_used': unique_info_items_set,
     'total_info_items_extracted': [len(unique_info_items_set)],
     'total_info_item_count': [total_info_item_count],
     })

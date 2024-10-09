@@ -490,7 +490,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
             all_relevant_info_items = extract_text_inside_brackets(interviewee_specific_item_responses[0]) if extract_information_item_numbers(extract_text_inside_brackets(interviewee_specific_item_responses[0])) else "No information items align with the question"
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)  # list of numbers
             
-            human_persuation_criteria = '''
+            human_persuation_criteria = f'''
             {PROMPT_COLOR}- 0: The question is not persuasive at all and does nothing to help you trust them more.
             - 1: The question is slightly persuasive and you are be willing to engage more.
             - 2: The question is significantly persuasive and you are fully willing to engage and trust them.{RESET}

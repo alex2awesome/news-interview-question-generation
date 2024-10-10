@@ -96,8 +96,8 @@ def conduct_intermediate_interviews_batch(num_turns, df, model_name="meta-llama/
         ]
 
         starting_source_prompts = [
-            get_source_starting_prompt(current_conversation, info_items, persona)
-            for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
+            get_source_starting_prompt(current_conversation, persona)
+            for current_conversation, persona in zip(current_conversations, personas)
         ]
         starting_interviewee_responses = generate_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
         starting_interviewee_answers = [extract_text_inside_brackets(response) for response in starting_interviewee_responses]

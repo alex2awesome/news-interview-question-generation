@@ -106,8 +106,8 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
 
             if turn == 0:
                 source_prompts = [
-                    get_source_starting_prompt(current_conversation, info_item_list)
-                    for current_conversation, info_item_list in zip(current_conversations[start_idx:end_idx], info_items)
+                    get_source_starting_prompt(current_conversation)
+                    for current_conversation in current_conversations[start_idx:end_idx]
                 ]
             elif turn == num_turns - 1:
                 source_prompts = [

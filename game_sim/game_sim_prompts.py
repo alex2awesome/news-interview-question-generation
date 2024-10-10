@@ -2,6 +2,10 @@
 
 # ------------- source prompt section ------------- #
 PERSONA_PROMPTS = {
+    "anxious": '''
+        You are feeling anxious and uncertain whether you should be doing this interview or whether you know the information. You may hesitate, give vague answers, or ask for clarification. You might express nervousness or confusion in your responses. 
+        You might say you're not sure you should be saying this or that you're not sure if you're the right person to answer the question.
+    ''',
     "avoidant": '''
         You give brief, deflecting, non-committal answers. You avoid going into too much detail and may dodge direct questions by speaking generally or changing the subject. 
     ''',
@@ -28,11 +32,18 @@ PERSONA_PROMPTS = {
 }
 
 PERSUASION_PERSONA_PROMPTS = {
+    "anxious": '''
+        You tend to respond well to empathetic, reassuring, and non-threatening conversations. Encouraging, supportive, and patient language can help you feel more comfortable. Here are some phrases that might help persuade you:
+           - "It's okay, take your time."
+           - "I understand this might be difficult for you. Thank you for being here."
+           - "You're doing great, there's no pressure."
+           - "I appreciate your honesty and effort."
+    ''',
     "avoidant": '''
-        You tend to respond well to the following kinds of communication: non-judgmental, patient, and autonomy-supporting conversations. Approaching the conversation with empathy and giving space for reflection can make it easier for you to share information. For example, the specific phrases might help you feel persuaded:
-           - "Take your time; there's no rush."
-           - "It's completely up to you if you want to share more."
-           - "I understand if this is difficult to talk about."
+        You tend to respond well conversations that start with non-obtrusive small talk and, when the questions start, leave lots of space. Shorter questions are better and big gaps for you to fill. For example, the specific phrases might help you feel persuaded:
+           - "And that happened when?"
+           - "I imagine there's more to the story."
+           - "Ah I see."
     ''',
     
     "defensive": '''
@@ -57,14 +68,13 @@ PERSUASION_PERSONA_PROMPTS = {
     ''',
     
     "dominating": '''
-        You respond well to acknowledgment of your expertise, opportunities to lead, and engaging in problem-solving. Allowing you to take control of the conversation and offering validation of your insights can be persuasive. Here are some examples that might appeal to you:
+        You respond well to acknowledgment of your expertise and stroking your ego. Allowing you to take control of the conversation and offering validation of your insights can be persuasive. Here are some examples that might appeal to you:
            - "I’d love to hear your take on this."
            - "It seems like you have a lot of experience with this, what would you suggest?"
            - "Your insights are really valuable here, how do you think we should proceed?"
     ''',
-    
     "clueless": '''
-        You respond well to non-judgmental, patient, and encouraging conversations. Simple, open-ended questions, positive reinforcement, and gentle guidance help in exploring your ideas. Providing examples and breaking down complex concepts can also help you feel more confident. These phrases might help:
+        You respond well to guiding and encouraging conversations. Simple yet firm questions from the interiewer that show the interviewer is the boss. Providing examples and breaking down complex concepts can also help you feel more confident. These phrases might help:
            - "Could you tell me more about what you're thinking?"
            - "It's okay to be unsure, let’s figure it out together."
            - "How about we start with something simple?"
@@ -80,7 +90,14 @@ PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
         Straightforward Source's response: 
         [Additionally, we were able to secure additional funding midway through the project, which helped us overcome initial challenges.]
     ''',
+    "anxious": '''
+        Here is an example, your response should follow its format:
 
+        **Anxious Persona Example**:
+        Interviewer's question: "Can you explain the delays in the project?"
+        Anxious Source's response:
+        [I'm not sure if I should be saying this, maybe I should speak to my manager. Did you clear this interview? If I had to say something, I would say that I think the delays were due to a lack of communication. That's what I think.]
+    ''',
     "avoidant": '''
         Here is an example, your response should follow its format:
         
@@ -142,6 +159,21 @@ PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
         Example 3: Mildly Persuaded
         - [We did have some setbacks, but overall, our strategy held strong.]
     ''',
+    "anxious": '''
+        Your response should follow this format:
+        
+        Interviewer's question: "Can you explain the delays in the project?"
+
+        Example 1: Not Persuaded
+        - [I'm not sure if I should be saying this, maybe I should speak to my manager. Did you clear this interview? If I had to say something, I would say that I think the delays were due to a lack of communication. That's what I think.]
+
+        Example 2: Persuaded
+        - [I think the main issue was the supply chain, and the way we handled it. If you take that information and confirm it, I'm sure you'll find something.]
+
+        Example 3: Mildly Persuaded
+        - [OK. I think I can say some of these things. Look, the delays were due to a combination of factors, including communication breakdowns and resource shortages. But that's off the record, you'll have to check with the team for more details.]
+    ''',
+    
 
     "avoidant": '''
         Your response should follow this format:
@@ -322,7 +354,27 @@ def get_source_prompt_intermediate(QA_Sequence, relevant_info_items, persona):
     '''
     return prompt
 
-def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona, persona_score):
+def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona, persuasion_level):
+    """
+    Generates a prompt for a source with an advanced persona during an interview.
+
+    This function constructs a prompt for a source being interviewed, taking into account
+    the persona of the source and their persuasion level. It uses the conversation history,
+    relevant information items, and persona characteristics to guide the source's response.
+
+    Parameters:
+    - QA_Sequence (str): The conversation history up to the current point in the interview.
+    - relevant_info_items (str): Information items that the source should use in their response.
+    - persona (str): The persona type of the source, which influences their speech characteristics.
+    - persuasion_level (int): A score indicating the level of persuasion of the source, where:
+        0 = not persuaded at all,
+        1 = mildly persuaded,
+        2 = persuaded.
+
+    Returns:
+    - str: A formatted prompt for the source to use in crafting their response.
+    """
+
     if persona.lower() in PERSONA_PROMPTS and persona.lower() in PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES:
         persona_prompt = PERSONA_PROMPTS.get(persona.lower())
         persona_few_shot_examples = PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get(persona.lower())
@@ -336,7 +388,7 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
         2: "persuaded"
     }
 
-    persona_score_description = persona_score_map.get(persona_score)
+    persuasion_level_description = persona_score_map.get(persuasion_level)
 
     prompt = f'''
     You are a source getting interviewed. Here is the conversation so far:
@@ -347,7 +399,7 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
         {persona_prompt}
 
     Next, respond to the interviewer's last question. Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer. 
-    Additionally, respond as though you’ve been {persona_score_description}.
+    Additionally, respond as though you’ve been {persuasion_level_description}.
         {relevant_info_items} 
     
     Make sure you're including all of the relevant information items above in your response, just communicated in the appropriate style.
@@ -358,19 +410,13 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
     '''
     return prompt
 
-def get_source_starting_prompt(QA_Sequence, info_items, persona="straightforward"):
+def get_source_starting_prompt(QA_Sequence, persona="straightforward"):
     if persona.lower() in PERSONA_PROMPTS:
         persona_prompt = PERSONA_PROMPTS.get(persona.lower())
     prompt = f'''
     You are a source getting interviewed. You have the following speech characteristics:
     
     {persona_prompt}
-
-    You have the following pieces of information:
-
-    {info_items}
-
-    These information items represent the information you possess and can divulge in an interview.
     
     Here is the conversation so far:
 
@@ -438,8 +484,8 @@ def get_interviewer_prompt(QA_Sequence, outline_objectives, num_turns_left, stra
     
     2. **Strategy Based on Persona**: 
         - Based on the detected persona, decide how to proceed with your questioning.
-        - If the source seems “anxious,” consider using a reassuring tone to calm them down and encourage more open responses.
-        - If the source seems “avoidant,” consider using a non-judgmental, patient, and open-ended question to encourage more voluntary sharing of details. You might give them space to reflect and emphasize autonomy.
+        - If the source seems “anxious,” consider using a reassuring tone to calm them down and encourage more open responses. You might want to reassure them that they are doing well and won't get in trouble.
+        - If the source seems “avoidant,” consider using shorter, brief answers and leaving lots of space to encourage more voluntary sharing of details. You might give them space to reflect.
         - If the source seems “defensive,” use empathetic, non-confrontational language. Acknowledge their feelings, reduce any perceived threat, and encourage a collaborative tone to ease defensiveness.
         - If the source seems “straightforward,” ask more direct, clear, and solution-oriented questions. You can challenge them to go deeper or provide additional details since they tend to appreciate transparency and brevity.
         - If the source seems to be a “poor explainer,” try using structured, clarifying questions and guide the conversation with simple prompts. Break complex topics down into manageable parts and provide validation to help them articulate their thoughts better.

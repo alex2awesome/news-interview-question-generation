@@ -7,9 +7,9 @@ import pandas as pd
 import random
 import json
 import ast
-from vllm import LLM, SamplingParams
 import gc
 import numpy as np
+from tqdm.auto import tqdm
 from scipy.stats import beta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -37,51 +37,10 @@ from game_sim.game_sim_prompts import (
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 
-# select random segments from a specified information item based on persona and persuasion level
-# def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, persona, persuasion_level, max_proportion=1.0):
-#     try:
-#         segmented_info_items = ast.literal_eval(segmented_info_items_str)
-#         # segmented_info_items = json.loads(sample['segmented_info_items'])
-#     except:
-#         return "Error: Unable to parse segmented info items.", used_segments_dict
-
-#     match = re.search(r'#(\d+)', chosen_info_item)
-#     if not match:
-#         return "Error: Unable to parse chosen_info_item.", used_segments_dict
-#     item_number = int(match.group(1))
-#     item_key = f"Information item #{item_number}"
-
-#     if item_key not in segmented_info_items:
-#         return "No segments found for this information item.", used_segments_dict
-
-#     segments = segmented_info_items[item_key]
-    
-#     if item_key not in used_segments_dict:
-#         used_segments_dict[item_key] = set()
-
-#     available_segments = [seg for i, seg in enumerate(segments) if i not in used_segments_dict[item_key]]
-
-#     if not available_segments:
-#         return "All segments for this item have been used.", used_segments_dict
-
-#     proportion_to_return = sample_proportion_from_beta(persona, persuasion_level)
-#     proportion_to_return = min(proportion_to_return, max_proportion)
-
-#     num_segments_to_return = round(proportion_to_return * len(available_segments))
-#     num_segments_to_return = max(1, num_segments_to_return)  # Ensure at least one segment is returned
-
-#     selected_segments = random.sample(available_segments, num_segments_to_return)
-
-#     for seg in selected_segments:
-#         used_segments_dict[item_key].add(segments.index(seg))
-
-#     formatted_segments = "\n".join(f"- {segment}" for segment in selected_segments)
-
-#     return formatted_segments, used_segments_dict
-
 # parameters of the beta distribution 
 PERSONA_DICT = {
     'anxious': [(2, 4), (4, 4), (4, 2)],
+    'avoidant': [(2, 4), (3, 3), (4, 2)],
     'defensive': [(1.5, 3), (4, 3), (7, 2)],
     'straightforward': [(4, 1.5), (5, 1), (7, 0.5)], 
     'poor explainer': [(2, 3), (3, 2), (4, 1)], 
@@ -94,7 +53,7 @@ def sample_proportion_from_beta(persona, persuasion_level):
     Sample a proportion from the beta distribution based on persona and persuasion level.
 
     Parameters:
-        - persona (str): The persona of the source (e.g., 'anxious', 'avoidant', etc.).
+        - persona (str): The persona of the source (e.g., 'anxious', 'dominant', etc.).
         - persuasion_level (int): The level of persuasion (0, 1, or 2).
 
     Returns:
@@ -105,215 +64,423 @@ def sample_proportion_from_beta(persona, persuasion_level):
     proportion = max(0.0, min(1.0, proportion))
     return proportion
 
-def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_advanced"):
+
+def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level, used_info_items):
+    """
+    Retrieve relevant information items based on the given parameters.
+
+    This function identifies and returns a subset of information items that are relevant to the current 
+    interview context. It considers the persona and persuasion level to determine the proportion of 
+    information items to return. The function also ensures that previously used information items are not 
+    selected again.
+
+    Parameters:
+        - info_item_numbers (list of int): A list of information item numbers that are relevant to a previously asked question.
+        - info_items_dict (dict): A dictionary mapping all information item keys to their content.
+        - persona (str): The persona of the source (e.g., 'anxious', 'dominant', etc.).
+        - persuasion_level (int): The level of persuasion (0, 1, or 2).
+        - used_info_items (set of int): A set of information item numbers that have already been used.
+
+    Returns:
+        tuple: A tuple containing:
+            - str: A formatted string of the selected information items or a message if no items are available.
+            - list of int: A list of numbers representing the selected information items.
+    """
+    # Initialize a list to store available information items
+    available_items = []
+    
+    # Iterate over the provided information item numbers
+    for num in info_item_numbers:
+        # Check if the item has not been used
+        if num not in used_info_items:
+            # Construct the key for the information item
+            key = f"Information Item #{num}"
+            # Retrieve the content of the information item from the dictionary
+            content = info_items_dict.get(key.lower(), '')
+            # If content exists, add it to the available items list
+            if content:
+                available_items.append((num, f"{key}: {content}"))
+    
+    # Calculate the total number of items and the number of used items
+    N = len(info_item_numbers)
+    k = len([num for num in info_item_numbers if num in used_info_items])  # num of used items
+    available = N - k  # Calculate the number of available items
+
+    # Check if all relevant information has been used
+    if available == 0:
+        return "All relevant information has been given to the interviewer already!", []  
+    
+    # Check if there are no available items
+    if not available_items:
+        return "No information items align with the question", []
+    
+    # Sample a proportion of items to return based on persona and persuasion level
+    proportion = sample_proportion_from_beta(persona, persuasion_level)
+    num_items_to_retrieve = int(proportion * N)
+    
+    # Adjust the number of items to return if it exceeds available items
+    num_items_to_retrieve = min(num_items_to_retrieve, available)
+
+    # If there are items to return, sample and format them
+    if num_items_to_retrieve > 0:
+        sampled = random.sample(available_items, num_items_to_retrieve)
+        sampled_items_str = "\n".join(item[1] for item in sampled)
+        sampled_item_numbers = [item[0] for item in sampled]
+        return sampled_items_str, sampled_item_numbers
+    
+    # If no items are selected, return a default message
+    else:
+        return "No relevant information for this question. Feel free to ramble and say nothing important.", []
+
+
+def get_all_relevant_info_items(info_item_numbers, info_items_dict):
+    """
+    Retrieve all relevant information items based on provided item numbers.
+
+    This function takes a list of information item numbers and a dictionary containing
+    information items. It constructs a list of all relevant information items that
+    correspond to the provided item numbers.
+
+    Parameters:
+    - info_item_numbers (list of int): A list of numbers representing the information items to retrieve.
+    - info_items_dict (dict): A dictionary where keys are information item identifiers and values are the content.
+
+    Returns:
+    - str: A formatted string containing all relevant information items. If no items align with the question,
+            a default message is returned.
+    """
+    # Initialize a list to store all relevant information items
+    all_items = []
+    
+    # Iterate over the provided information item numbers
+    for num in info_item_numbers:
+        # Construct the key for the information item
+        key = f"information item #{num}".lower()
+        # Retrieve the content of the information item from the dictionary
+        content = info_items_dict.get(key, '')
+        # If content exists, add it to the all items list
+        if content:
+            all_items.append(f"Information Item #{num}: {content}")
+
+    # Check if no relevant information items were found
+    if not all_items:
+        return "No information items align with the question"
+
+    # Return a formatted string of all relevant information items
+    return "\n".join(all_items) if all_items else "No information items align with the question"
+
+
+## Conduct advanced interviews
+def conduct_advanced_interviews_batch(
+        num_turns, df, 
+        interviewer_model_name="meta-llama/meta-llama-3.1-70b-instruct", 
+        source_model_name="gpt-4o",
+        batch_size=50, 
+        output_dir="output_results/game_sim/conducted_interviews_advanced"
+):
     os.makedirs(output_dir, exist_ok=True)
-    model = load_model(model_name)
+    interviewer_model = load_model(interviewer_model_name)
+    if source_model_name == interviewer_model_name:
+        source_model = interviewer_model
+    else:
+        assert source_model_name == "gpt-4o", "Only GPT-4o is supported as the source model, if it's different from the interviewer model."
+        source_model = load_model(source_model_name)
+
     num_samples = len(df)
     unique_info_item_counts = [0] * num_samples
     total_info_item_counts = [0] * num_samples
+    used_info_items = [set() for _ in range(num_samples)]
     df['info_items_dict'] = df['info_items_dict'].apply(json.loads)
 
-    persona_types = ["avoidant", "defensive", "straightforward", 
-                     "poor explainer", "dominating", "clueless"]
+    persona_types = [
+        "anxious",
+        "avoidant",
+        "defensive", 
+        "straightforward", 
+        "poor explainer", 
+        "dominating", 
+        "clueless"
+    ]
 
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
         batch_df = df.iloc[start_idx:end_idx]
         info_items_list = batch_df['info_items']
-        info_items_dict = batch_df['info_items_dict']
         outlines = batch_df['outlines']
         current_conversations = [""] * (end_idx - start_idx)
+
         unique_info_items_sets = [set() for _ in range(end_idx - start_idx)]
         total_info_item_counts[start_idx:end_idx] = [count_information_items(info_items) for info_items in info_items_list]
         
         personas = [random.choice(persona_types) for _ in range(end_idx - start_idx)]
 
         #### 1. Handle the FIRST interviewer question and source answer outside the loop
+        # The following section initializes the first question from the interviewer
+        # and the first response from the source in the interview process.
         
-        # first interviewer question
+        # Generate starting prompts for the interviewer using the outline and a straightforward persona
         starting_interviewer_prompts = [
             get_interviewer_starting_prompt(outline, "straightforward")
             for outline in outlines
         ]
-        starting_interviewer_responses = generate_INTERVIEWER_response_batch(starting_interviewer_prompts, model)
+        
+        # Generate responses for the starting prompts using the interviewer model
+        starting_interviewer_responses = generate_INTERVIEWER_response_batch(starting_interviewer_prompts, interviewer_model)
+        
+        # Extract the questions from the responses, ensuring they are within brackets
         starting_interviewer_questions = [
             extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
             for response in starting_interviewer_responses
         ]
+        
+        # Update the current conversation with the interviewer's question
         current_conversations = [
             f"{ch}\nInterviewer: {question}"
             for ch, question in zip(current_conversations, starting_interviewer_questions)
         ]
-
-        # first source response
+        
+        # Generate starting prompts for the source using the current conversation and persona
         starting_source_prompts = [
-            get_source_starting_prompt(current_conversation, info_items, persona)
-            for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
+            get_source_starting_prompt(current_conversation, persona)
+            for current_conversation, persona in zip(current_conversations, personas)
         ]
-        starting_interviewee_responses = generate_SOURCE_response_batch(starting_source_prompts, model)
+        
+        # Generate responses for the starting prompts using the source model
+        starting_interviewee_responses = generate_SOURCE_response_batch(starting_source_prompts, source_model)
+        
+        # Extract the answers from the responses, ensuring they are within brackets
         starting_interviewee_answers = [extract_text_inside_brackets(response) for response in starting_interviewee_responses]
+        
+        # Update the current conversation with the interviewee's answer
         current_conversations = [
             f"{ch}\nInterviewee: {response}"
             for ch, response in zip(current_conversations, starting_interviewee_answers)
         ]
+        
+        # Initialize a cache for running conversations, storing the first question and answer
+        running_conversations_for_caching = [
+            {
+                f'question_0': question,
+                f'persuasion_0': None,
+                f'info_items_0': None,
+                f'answer_0': answer,
+            }
+            for question, answer in zip(
+                starting_interviewer_questions, 
+                starting_interviewee_answers, 
+            )
+        ]
+
 
         #### 2. Handle the middle questions/answers within the loop
-        for turn in range(num_turns - 2):
-            num_turns_left = num_turns - (2 + turn)
+        for turn in tqdm(range(num_turns - 1), desc="Conducting interviews", total=num_turns - 1):
+            # The following code block handles the middle questions and answers in the interview loop.
+            # It iterates over the number of turns left and generates interviewer questions and interviewee responses.
+
+            # Calculate the number of turns left in the conversation
+            num_turns_left = num_turns - turn
             
-            # interviewer question
+            # Generate prompts for the interviewer based on the current conversation, outline, and remaining turns
             interviewer_prompts = [
                 get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
                 for current_conversation, outline in zip(current_conversations, outlines)
             ]
-            interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_prompts, model)
-            interviewer_questions = [extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}" for response in interviewer_responses]
-            gc.collect()
+            
+            # Generate responses for the interviewer prompts using the interviewer model
+            interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_prompts, interviewer_model)
+            
+            # Extract questions from the interviewer responses, handling cases where the answer is not in brackets
+            interviewer_questions = [
+                extract_text_inside_brackets(response) 
+                if extract_text_inside_brackets(response) 
+                else f"answer not in brackets:\n {response}"
+                for response in interviewer_responses
+            ]
 
+            # Update the current conversations with the new interviewer questions
             current_conversations = [
                 f"{ch}\nInterviewer: {question}"
                 for ch, question in zip(current_conversations, interviewer_questions)
             ]
 
-            # get specific information item
+            ## Goal: Find which information items from the interviewee are relevant to the question.
+            # Generate prompts 
             specific_info_item_prompts = [
                 get_source_specific_info_items_prompt(current_conversation, info_items)
                 for current_conversation, info_items in zip(current_conversations, info_items_list)
             ]
-            interviewee_specific_item_responses = generate_SOURCE_response_batch(specific_info_item_prompts, model)
+            
+            # Generate responses for the specific information item prompts using the source model
+            interviewee_specific_item_responses = generate_SOURCE_response_batch(specific_info_item_prompts, source_model)
+            
+            # Extract specific information items from the responses, handling cases where no items align with the question
             specific_info_items = [
-                extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No information items align with the question"
+                extract_text_inside_brackets(response)
                 for response in interviewee_specific_item_responses
             ]
+            specific_info_items_numbers = [
+                extract_information_item_numbers(response)
+                for response in specific_info_items
+            ]
 
-            # get level of persuasion
+            ## Goal: Find level of persuasion from the interviewee based on the current conversation and persona.
+            # Generate prompts
             persuasion_level_prompts = [
                 get_source_persuasion_level_prompt(current_conversation, persona)
                 for current_conversation, persona in zip(current_conversations, personas)
             ]
-            interviewee_persuasion_level_responses = generate_SOURCE_response_batch(persuasion_level_prompts, model)
+            
+            # Generate responses
+            interviewee_persuasion_level_responses = generate_SOURCE_response_batch(persuasion_level_prompts, source_model)
+            
+            # Extract persuasion levels from the responses
             persuasion_levels = [
                 extract_text_inside_brackets(response)
                 for response in interviewee_persuasion_level_responses
             ]
-            
-            for idx, (specific_item, persuasion_level_str, persona) in enumerate(zip(specific_info_items, persuasion_levels, personas)):
-                info_item_numbers = extract_information_item_numbers(specific_item)
-                unique_info_items_sets[idx].update(info_item_numbers)
-                
-                if info_item_numbers:
-                    chosen_item = f"Information Item #{info_item_numbers[0]}"
-                    try:
-                        persuasion_level_int = int(persuasion_level_str)
-                    except (ValueError, TypeError):
-                        persuasion_level_int = 0
-                    if persuasion_level_int not in [0, 1, 2]:
-                        persuasion_level_int = 0
 
-            gc.collect()
-
-            # source response
-            source_prompts = [
-                get_source_persona_prompt_advanced(current_conversation, info_items, persona, )
-                for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
+            # Convert persuasion levels to integers if possible
+            persuasion_level_ints = [
+                int(persuasion_level) 
+                if persuasion_level.isdigit() else 0 
+                for persuasion_level in persuasion_levels
             ]
-            interviewee_responses = generate_SOURCE_response_batch(source_prompts, model)
-            interviewee_answers = [extract_text_inside_brackets(response) for response in interviewee_responses]
+
+            # Filter the specific_info_items to the ones we haven't used yet
+            info_items_to_use = [
+                get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level, used)
+                for info_item_numbers, info_items_dict, persona, persuasion_level, used in zip(
+                    specific_info_items_numbers, batch_df['info_items_dict'], personas, persuasion_level_ints, used_info_items
+                )
+            ]
+
+            # Update the used information items
+            used_info_items = [
+                used.union(set(info_item_numbers[1])) 
+                    for used, info_item_numbers in zip(used_info_items, info_items_to_use)
+            ]
+
+            # source response:
+            # The following section generates prompts for the source's response based on the current conversation, 
+            # relevant information items, and the persona of the interviewee.
+            # It uses the `get_source_persona_prompt_advanced` function to create these prompts.
+            source_prompts = [
+                get_source_persona_prompt_advanced(current_conversation, info_items[0], persona, persuasion_level)
+                    for current_conversation, info_items, persona, persuasion_level 
+                    in zip(current_conversations, info_items_to_use, personas, persuasion_level_ints)
+            ]
+            
+            # The generated prompts are then passed to the `generate_SOURCE_response_batch` function to obtain responses
+            # from the source model. These responses simulate the interviewee's answers.
+            interviewee_responses = generate_SOURCE_response_batch(source_prompts, source_model)
+            
+            # The responses are processed to extract the text inside brackets, which is considered the final answer.
+            interviewee_answers = [
+                extract_text_inside_brackets(response) for response in interviewee_responses
+            ]
+            
+            # The current conversation is updated by appending the interviewee's answer to it.
             current_conversations = [
                 f"{ch}\nInterviewee: {response}"
                 for ch, response in zip(current_conversations, interviewee_answers)
             ]
+            
+            # The running conversations are updated for caching purposes, including the question, answer, and persuasion level.
+            running_conversations_for_caching = [
+                {
+                    **conversation,
+                    f'question_{turn + 1}': question,
+                    f'persuasion_{turn + 1}': persuasion,
+                    f'info_items_{turn + 1}': info_items,
+                    f'answer_{turn + 1}': answer,
+                }
+                for conversation, question, answer, info_items, persuasion in zip(
+                    running_conversations_for_caching, 
+                    interviewer_questions, 
+                    interviewee_answers, 
+                    info_items_to_use,
+                    persuasion_levels
+                )
+            ]
 
         #### 3. Handle the FINAL interviewer question and source answer outside the loop
         # Last interviewer question (ending prompt)
+        # The following section handles the final question from the interviewer and the corresponding response from the source.
+        # It generates prompts for the interviewer's final question using the `get_interviewer_ending_prompt` function.
+        # These prompts are based on the current conversation and the outline, with a straightforward approach.
         interviewer_ending_prompts = [
             get_interviewer_ending_prompt(current_conversation, outline, "straightforward")
             for current_conversation, outline in zip(current_conversations, outlines)
         ]
-        ending_interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_ending_prompts, model)
+        
+        # The generated prompts are then passed to the `generate_INTERVIEWER_response_batch` function to obtain the final questions.
+        ending_interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_ending_prompts, interviewer_model)
+        
+        # The responses are processed to extract the text inside brackets, which is considered the final question.
+        # If no text is found inside brackets, the entire response is used.
         ending_interviewer_questions = [
             extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
             for response in ending_interviewer_responses
         ]
+        
+        # The current conversation is updated by appending the interviewer's final question to it.
         current_conversations = [
             f"{ch}\nInterviewer: {question}"
             for ch, question in zip(current_conversations, ending_interviewer_questions)
         ]
-
+        
+        # Next, prompts for the source's final response are generated using the `get_source_ending_prompt` function.
+        # These prompts are based on the updated conversation, relevant information items, and the persona of the interviewee.
         ending_source_prompts = [
-            get_source_ending_prompt(current_conversation, info_items, persona)
-            for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
+            get_source_ending_prompt(current_conversation, persona)
+            for current_conversation, persona in zip(current_conversations, personas)
         ]
-        ending_interviewee_responses = generate_SOURCE_response_batch(ending_source_prompts, model)
+        
+        # The generated prompts are then passed to the `generate_SOURCE_response_batch` function to obtain the final responses.
+        ending_interviewee_responses = generate_SOURCE_response_batch(ending_source_prompts, source_model)
+        
+        # The responses are processed to extract the text inside brackets, which is considered the final answer.
         ending_interviewee_answers = [extract_text_inside_brackets(response) for response in ending_interviewee_responses]
+        
+        # The current conversation is updated by appending the interviewee's final answer to it.
         current_conversations = [
             f"{ch}\nInterviewee: {response}"
             for ch, response in zip(current_conversations, ending_interviewee_answers)
         ]
-
-        unique_info_item_counts[start_idx:end_idx] = [len(info_set) for info_set in unique_info_items_sets]
-
+        running_conversations_for_caching = [
+            {
+                **conversation,
+                f'question_{num_turns}': question,
+                f'answer_{num_turns}': answer,
+            }   
+            for conversation, question, answer in zip(
+                running_conversations_for_caching,
+                ending_interviewer_questions,
+                ending_interviewee_answers
+            )
+        ]
+        
+        # Save the batch of conducted interviews to a JSONL file
+        unique_info_item_counts[start_idx: end_idx] = [len(info_set) for info_set in unique_info_items_sets]
         batch_output_df = pd.DataFrame({
             'id': batch_df['id'],
             'combined_dialogue': batch_df['combined_dialogue'],
             'info_items': batch_df['info_items'],
             'outlines': batch_df['outlines'],
+            'running_conversations': running_conversations_for_caching,
             'final_conversations': current_conversations,
             'total_info_items_extracted': unique_info_item_counts[start_idx:end_idx],
             'total_info_item_count': total_info_item_counts[start_idx:end_idx],
         })
 
-        batch_file_name = f"conducted_interviews_batch_{start_idx}_{end_idx}.csv"
+        batch_file_name = f"conducted_interviews_batch_{start_idx}_{end_idx}.jsonl"
         batch_file_path = os.path.join(output_dir, batch_file_name)
-        batch_output_df.to_csv(batch_file_path, index=False)
+        batch_output_df.to_json(batch_file_path, orient='records', lines=True)
         print(f"Batch {start_idx} to {end_idx} saved to {batch_file_path}")
 
-    final_df = stitch_csv_files(output_dir, 'all_advanced_interviews_conducted.csv')
+    final_df = stitch_csv_files(output_dir, 'all_advanced_interviews_conducted.jsonl')
     return final_df
 
-def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level, used_info_items):
-    available_items = []
-    for num in info_item_numbers:
-        if num not in used_info_items:
-            key = f"information item #{num}".lower()
-            content = info_items_dict.get(key, '')
-            if content:
-                available_items.append((num, f"Information Item #{num}: {content}"))
-    N = len(info_item_numbers)
-    k = len([num for num in info_item_numbers if num in used_info_items]) # num of used items
-    available = N - k
-
-    if available == 0:
-        return "All relevant information has been given to the interviewer already!", []  
-    if not available_items:
-        return "No information items align with the question"
-    proportion = sample_proportion_from_beta(persona, persuasion_level)
-    num_items = int(proportion * N)
-    if num_items > available:
-        num_items = available
-
-    if num_items > 0:
-        sampled = random.sample(available_items, num_items)
-        sampled_items_str = "\n".join(item[1] for item in sampled)
-        sampled_item_numbers = [item[0] for item in sampled]
-        return sampled_items_str, sampled_item_numbers
-    elif int(proportion * N) == 0:
-        return "No relevant information for this question. Feel free to ramble and say nothing important.", []
-    else:
-        return "No relevant information for this question. Feel free to ramble and say nothing important.", []
-
-def get_all_relevant_info_items(info_item_numbers, info_items_dict):
-    all_items = []
-    for num in info_item_numbers:
-        key = f"information item #{num}".lower()
-        content = info_items_dict.get(key, '')
-        if content:
-            all_items.append(f"Information Item #{num}: {content}")
-
-    if not all_items:
-        return "No information items align with the question"
-
-    return "\n".join(all_items) if all_items else "No information items align with the question"
 
 # ANSI escape codes for colors
 RESET = "\033[0m"        # Resets the color
@@ -336,7 +503,7 @@ def human_eval(
     role = "interviewer" if role == "A" else "source"
     print(f"\n{PROMPT_COLOR}You've chosen to play as the {role}.{RESET}\n")
 
-    persona_types = ["avoidant", "defensive", "straightforward", "poor explainer", "dominating", "clueless"]
+    persona_types = ["anxious", "avoidant", "defensive", "straightforward", "poor explainer", "dominating", "clueless"]
     if role == 'interviewer':
         print(f"{PROMPT_COLOR}Please choose a source persona to play against.{RESET}")
     else:
@@ -375,6 +542,7 @@ def human_eval(
     if available_df.empty:
         print(f"{ERROR_COLOR}All interviews from this dataframe have been conducted. No more unique interviews available.{RESET}")
         return None 
+    
     sample = available_df.sample(n=1).iloc[0].copy()
     sample['info_items_dict'] = ast.literal_eval(sample['info_items_dict'])
     info_items = sample['info_items']
@@ -383,9 +551,20 @@ def human_eval(
     current_conversation = ""
     unique_info_items_set = set()
     total_info_item_count = count_information_items(info_items)
-
+    persuasion_levels = [] ## store persuasion levels for each turn
     model = load_model(model_name)
 
+
+    starting_interviewer_prompt = get_interviewer_starting_prompt(outline, "straightforward")
+    interviewer_response = generate_INTERVIEWER_response_batch([starting_interviewer_prompt], model)
+    interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
+    current_conversation = f"Interviewer: {interviewer_question}"
+
+    starting_source_prompt = get_source_starting_prompt(current_conversation, persona)
+    source_response = generate_SOURCE_response_batch([starting_source_prompt], model)
+    source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
+    current_conversation += f"\nInterviewee: {source_answer}"
+    
     #### 1. FIRST interviewer question and source answer
     if role == "interviewer":  # human is interviewer
         interviewer_prompt = f'''
@@ -398,29 +577,19 @@ def human_eval(
         Use this outline to help you extract as much information from the source as possible, and think about relevant follow-up questions.{RESET}
         '''
         print(f"\n{interviewer_prompt}")
-        human_question = input(f"\n\n{INTERVIEWER_COLOR}You only have time for {num_turns} questions. Now, please input your starting remark: {RESET}")
-        current_conversation = f"(Human) Interviewer: {human_question}"
-
-        starting_source_prompt = get_source_starting_prompt(current_conversation, info_items, persona)
-        source_response = generate_SOURCE_response_batch([starting_source_prompt], model)
-        source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
-        current_conversation += f"\nInterviewee: {source_answer}"
+        print(f"\n{INTERVIEWER_COLOR}Interviewer Starting Remark (We kicked it off for you, you'll respond next): {interviewer_question}{RESET}\n")
         print(f"\n{SOURCE_COLOR}Interviewee (LLM): {source_answer}{RESET}\n")
-    else:  # human is source
-        starting_interviewer_prompt = get_interviewer_starting_prompt(outline, num_turns, "straightforward")
-        interviewer_response = generate_INTERVIEWER_response_batch([starting_interviewer_prompt], model)
-        interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
-        current_conversation = f"Interviewer: {interviewer_question}"
-        print(f"\n{INTERVIEWER_COLOR}Interviewer Starting Remark (LLM): {interviewer_question}{RESET}\n")
 
+
+    else:  # human is source
         print(f"\n\n{PROMPT_COLOR}Here are all the information items you have in this interview. These represent the relevant information at your disposal to divulge to the interviewer: \n\n{info_items}{RESET}")
-        
-        human_answer = input(f"\n\n{SOURCE_COLOR}Please respond accordingly: {RESET}")
-        current_conversation += f"\n(Human) Interviewee: {human_answer}"
+        print(f"\n{INTERVIEWER_COLOR}Interviewer Starting Remark (LLM): {interviewer_question}{RESET}\n")
+        print(f"\n{SOURCE_COLOR}Interviewee (We kicked it off for you, you'll respond next): {source_answer}{RESET}\n")
+
 
     #### 2. Middle turns
-    for turn in range(num_turns - 2):
-        num_turns_left = num_turns - (1 + turn)
+    for turn in range(num_turns - 1):
+        num_turns_left = num_turns - turn
 
         if role == "interviewer":  # human is interviewer
             interviewer_prompt = f'''
@@ -443,6 +612,7 @@ def human_eval(
 
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)
             persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
+            persuasion_levels.append(persuasion_level_int)
             relevant_info_items_str, sampled_item_numbers = get_relevant_info_items(
                 info_item_numbers, 
                 sample['info_items_dict'], 
@@ -457,6 +627,7 @@ def human_eval(
             source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
             current_conversation += f"\nInterviewee: {source_answer}"
             print(f"\n{SOURCE_COLOR}Interviewee (LLM): {source_answer}{RESET}")
+
         else:  # human is source
             interviewer_prompt = get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
             interviewer_response = generate_INTERVIEWER_response_batch([interviewer_prompt], model)
@@ -475,14 +646,20 @@ def human_eval(
             - 2: The question is significantly persuasive and you are fully willing to engage and trust them.{RESET}
             '''
             print(f"\nPlease analyze the interviewer's last question. Given that you are a {persona} source, do you feel persuaded?\n\nEvaluate on the following criteria: \n\n{human_persuation_criteria}\n\n")
-            persuasion_level = input(f"\n{PROMPT_COLOR}Now, please respond with either 0, 1, or 2: {RESET}")
-            persuasion_level_int = int(persuasion_level) if persuasion_level.isdigit() else 0
+            human_persuasion_level = input(f"\n{PROMPT_COLOR}Now, please respond with either 0, 1, or 2: {RESET}")
+            human_persuasion_level_int = int(human_persuasion_level) if human_persuasion_level.isdigit() else 0
+
+            llm_persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona)
+            llm_persuasion_level_response = generate_SOURCE_response_batch([llm_persuasion_level_prompt], model)
+            llm_persuasion_level = extract_text_inside_brackets(llm_persuasion_level_response[0]) or "0"
+            llm_persuasion_level_int = int(llm_persuasion_level) if llm_persuasion_level.isdigit() else 0
+            persuasion_levels.append([('human-assessed', human_persuasion_level_int), ('llm-assessed', llm_persuasion_level_int)])
             
             sampled_relevant_info_items_str, sampled_item_numbers = get_relevant_info_items(
                 info_item_numbers, 
                 sample['info_items_dict'], 
                 persona, 
-                persuasion_level_int, 
+                human_persuasion_level_int,
                 unique_info_items_set
             )
             unique_info_items_set.update(sampled_item_numbers)
@@ -544,10 +721,11 @@ def human_eval(
         'info_item_numbers_used': [unique_info_items_set],
         'total_info_items_extracted': [len(unique_info_items_set)],
         'total_info_item_count': [total_info_item_count],
+        'persuasion_levels': [persuasion_levels]
     })
 
-    output_path = os.path.join(output_dir, f"interview_{sample['id']}_human_{role}_vs_LLM.csv")
-    output_df.to_csv(output_path, index=False)
+    output_path = os.path.join(output_dir, f"interview_{sample['id']}_human_{role}_vs_LLM.jsonl")
+    output_df.to_json(output_path, orient='records', lines=True)
     print(f"{PROMPT_COLOR}Interview saved to {output_path}{RESET}")
 
     return output_df
@@ -557,6 +735,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_turns", type=int, default=4, help="Number of turns in the interview")
     parser.add_argument("--model_name", type=str, default="meta-llama/meta-llama-3.1-70b-instruct", help="Model name")
+    parser.add_argument("--interviewer_model_name", type=str, default="meta-llama/meta-llama-3.1-70b-instruct", help="Interviewer model name")
+    parser.add_argument("--source_model_name", type=str, default="gpt-4o", help="Source model name")
     parser.add_argument("--batch_size", type=int, default=50, help="Batch size for conducting interviews")
     parser.add_argument("--dataset_path", type=str, default="output_results/game_sim/outlines/final_df_with_outlines.csv", help="Path to the dataset")
     parser.add_argument("--output_dir", type=str, default="output_results/game_sim/conducted_interviews_advanced", help="Output directory for saving conducted interviews")
@@ -573,6 +753,25 @@ if __name__ == "__main__":
     if args.human_eval:
         human_evaluation = human_eval(args.num_turns, df, model_name=args.model_name, output_dir=args.output_dir)
         print(human_evaluation)
+    else:
+        conducted_interviews = conduct_advanced_interviews_batch(
+            args.num_turns, 
+            df, 
+            interviewer_model_name=args.interviewer_model_name, 
+            source_model_name=args.source_model_name, 
+            batch_size=args.batch_size, 
+            output_dir=args.output_dir
+        )
+        print(conducted_interviews)
+
+"""
+python conduct_interviews_advanced.py \
+    --interviewer_model_name "gpt-4o-mini" \
+    --source_model_name "gpt-4o-mini" \
+    --batch_size 5 \
+    --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \
+    --output_dir "test" 
+"""        
 
     # simulated_interviews = conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct")
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")

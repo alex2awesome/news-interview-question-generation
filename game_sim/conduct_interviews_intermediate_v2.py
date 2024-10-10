@@ -120,7 +120,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, interviewer_strategy="s
 
             if turn == 0: # Starting Turn
                 starting_source_prompts = [
-                    get_source_starting_prompt(current_conversation, info_items, persona) 
+                    get_source_starting_prompt(current_conversation, persona) 
                     for current_conversation, info_items, persona 
                     in zip(current_conversations[start_idx:end_idx], info_items_list, personas_batch)
                 ]

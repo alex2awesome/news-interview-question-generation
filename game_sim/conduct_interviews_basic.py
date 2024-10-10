@@ -98,8 +98,8 @@ def conduct_basic_interviews_batch(
         ]
 
         starting_source_prompts = [
-            get_source_starting_prompt(current_conversation, info_items, "straightforward")
-            for current_conversation, info_items in zip(current_conversations, info_items_list)
+            get_source_starting_prompt(current_conversation, "straightforward")
+            for current_conversation in current_conversations
         ]
 
         starting_interviewee_responses = generate_SOURCE_response_batch(starting_source_prompts, model, tokenizer)

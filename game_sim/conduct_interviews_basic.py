@@ -10,7 +10,18 @@ import gc
 import torch
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
+from helper_functions import (
+    generate_vllm_response,
+    load_vllm_model, 
+    initialize_tokenizer, 
+    extract_text_inside_brackets, 
+    stitch_csv_files, 
+    find_project_root,
+    generate_INTERVIEWER_response_batch,
+    generate_SOURCE_response_batch,
+    extract_information_item_numbers,
+    count_information_items,
+)
 from game_sim.game_sim_prompts import (
     get_source_prompt_basic, 
     get_source_starting_prompt, 
@@ -22,19 +33,6 @@ from game_sim.game_sim_prompts import (
 )
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
-# ---- single use ---- #
-def vllm_infer(messages, model, tokenizer):
-    formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    output = model.generate(formatted_prompt, sampling_params)
-    return output[0].outputs[0].text
-
-def generate_vllm_response(prompt, role, model, tokenizer):
-    messages = [
-        {"role": "system", "content": f"{role}."},
-        {"role": "user", "content": prompt}
-    ]
-    return vllm_infer(messages, model, tokenizer)
 
 def conduct_interview(initial_prompt, num_turns, model_name="meta-llama/Meta-Llama-3-8B-Instruct"):
     model = load_vllm_model(model_name)
@@ -54,40 +52,14 @@ def conduct_interview(initial_prompt, num_turns, model_name="meta-llama/Meta-Lla
     print("\nFinal Conversation:\n" + conversation_history)
     return conversation_history
 
-# ---- batch use ---- #
-def vllm_infer_batch(messages_batch, model, tokenizer):
-    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
-    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    outputs = model.generate(formatted_prompts, sampling_params)
-    return [output.outputs[0].text for output in outputs]
 
-def generate_vllm_INTERVIEWER_response_batch(prompts, model, tokenizer):
-    messages_batch = [
-        [
-            {"role": "system", "content": "You are a journalistic interviewer."},
-            {"role": "user", "content": prompt}
-        ] for prompt in prompts
-    ]
-    return vllm_infer_batch(messages_batch, model, tokenizer)
-
-def generate_vllm_SOURCE_response_batch(prompts, model, tokenizer):
-    messages_batch = [
-        [
-            {"role": "system", "content": "You are a guest getting interviewed."},
-            {"role": "user", "content": prompt}
-        ] for prompt in prompts
-    ]
-    return vllm_infer_batch(messages_batch, model, tokenizer)
-
-# regex to match "Information Item {integer}" and extract the integer
-def extract_information_item_numbers(response):
-    return [int(num) for num in re.findall(r'(?i)information item #?(\d+)', response)]
-
-# Regular expression to match "Information item #{integer}"
-def count_information_items(info_items_text):
-    return len(re.findall(r'(?i)information item #?\d+', info_items_text))
-
-def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straightforward", model_name = "meta-llama/meta-llama-3.1-70b-instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_basic"):
+def conduct_basic_interviews_batch(
+        num_turns, df, 
+        interviewer_strategy = "straightforward", 
+        model_name = "meta-llama/meta-llama-3.1-70b-instruct", 
+        batch_size=50, 
+        output_dir="output_results/game_sim/conducted_interviews_basic"
+):
     os.makedirs(output_dir, exist_ok=True)
     model = load_vllm_model(model_name)
     tokenizer = initialize_tokenizer(model_name)
@@ -115,7 +87,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straig
             for outline in outlines
         ]
 
-        starting_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(starting_interviewer_prompts, model, tokenizer)
+        starting_interviewer_responses = generate_INTERVIEWER_response_batch(starting_interviewer_prompts, model, tokenizer)
         starting_interviewer_questions = [
             extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
             for response in starting_interviewer_responses
@@ -130,7 +102,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straig
             for current_conversation, info_items in zip(current_conversations, info_items_list)
         ]
 
-        starting_interviewee_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
+        starting_interviewee_responses = generate_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
        
         starting_interviewee_answers = [extract_text_inside_brackets(response) for response in starting_interviewee_responses]
         current_conversations = [
@@ -145,7 +117,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straig
                 get_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
                 for current_conversation, outline in zip(current_conversations, outlines)
             ]
-            interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, model, tokenizer)
+            interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_prompts, model, tokenizer)
             interviewer_questions = [
                 extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"Answer not in brackets:\n{response}"
                 for response in interviewer_responses
@@ -161,7 +133,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straig
                 get_source_specific_info_items_prompt(current_conversation, info_items)
                 for current_conversation, info_items in zip(current_conversations, info_items_list)
             ]
-            interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, model, tokenizer)
+            interviewee_specific_item_responses = generate_SOURCE_response_batch(specific_info_item_prompts, model, tokenizer)
     
             all_relevant_info_items = [
                 extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No information items align with the question"
@@ -194,7 +166,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straig
                 for current_conversation, selected_info_item_content in zip(current_conversations, selected_info_items_content_list)
             ]
             
-            interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
+            interviewee_responses = generate_SOURCE_response_batch(source_prompts, model, tokenizer)
             interviewee_answers = [extract_text_inside_brackets(response) for response in interviewee_responses]
             current_conversations = [
                 f"{ch}\nInterviewee: {response}"
@@ -208,7 +180,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straig
             for current_conversation, outline in zip(current_conversations, outlines)
         ]
 
-        ending_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_ending_prompts, model, tokenizer)
+        ending_interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_ending_prompts, model, tokenizer)
         ending_interviewer_questions = [
             extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"Answer not in brackets:\n {response}"
             for response in ending_interviewer_responses
@@ -223,7 +195,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straig
             for current_conversation in current_conversations
         ]
      
-        ending_interviewee_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, model, tokenizer)
+        ending_interviewee_responses = generate_SOURCE_response_batch(ending_source_prompts, model, tokenizer)
         ending_interviewee_answers = [extract_text_inside_brackets(response) for response in ending_interviewee_responses]
         current_conversations = [
             f"{ch}\nInterviewee: {response}"
@@ -249,6 +221,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy = "straig
     final_df = stitch_csv_files(output_dir, 'all_basic_interviews_conducted.csv')
     return final_df
 
+
 if __name__ == "__main__":
     current_path = os.path.dirname(os.path.abspath(__file__))
     project_root = find_project_root(current_path, 'news-interview-question-generation')
@@ -258,10 +231,12 @@ if __name__ == "__main__":
     print(df)
 
     num_turns = 8
-    simulated_interviews = conduct_basic_interviews_batch(num_turns, 
-                                                          df,
-                                                          model_name="meta-llama/meta-llama-3.1-8b-instruct",
-                                                          output_dir="output_results/game_sim/conducted_interviews_basic/interviewer-8B-vs-source-8B")
+    simulated_interviews = conduct_basic_interviews_batch(
+        num_turns, 
+        df,
+        model_name="meta-llama/meta-llama-3.1-8b-instruct",
+        output_dir="output_results/game_sim/conducted_interviews_basic/interviewer-8B-vs-source-8B"
+    )
     print(simulated_interviews)
     
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")

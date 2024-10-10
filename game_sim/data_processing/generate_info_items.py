@@ -7,22 +7,16 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 import pandas as pd
 from vllm import LLM, SamplingParams
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, stitch_csv_files, find_project_root
+from helper_functions import (
+    load_vllm_model, 
+    initialize_tokenizer, 
+    stitch_csv_files, 
+    find_project_root,
+    generate_vllm_response
+
+)
 from game_sim_prompts import get_info_items_prompt
 
-# ---- single use ---- #
-def vllm_infer(messages, model, tokenizer):
-    formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    output = model.generate(formatted_prompt, sampling_params)
-    return output[0].outputs[0].text
-
-def generate_vllm_response(prompt, role, model, tokenizer):
-    messages = [
-        {"role": "system", "content": f"{role}."},
-        {"role": "user", "content": prompt}
-    ]
-    return vllm_infer(messages, model, tokenizer)
 
 def extract_information_items(transcripts, model, tokenizer):
     information_items = []

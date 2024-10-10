@@ -29,8 +29,7 @@ def all_questions_type_classification_prompt_loader(QA_seq, question):
 # ask alex if need multi-label functionality
 def classify_question_batch(QA_Sequences, questions, model, tokenizer):
     messages_batch = [all_questions_type_classification_prompt_loader(QA_seq, question) for QA_seq, question in zip(QA_Sequences, questions)]
-    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
-    outputs = vllm_infer_batch(formatted_prompts, model)
+    outputs = vllm_infer_batch(messages_batch, model)
     question_types = [extract_text_inside_brackets(output) if extract_text_inside_brackets(output).lower() in TAXONOMY else extract_text_inside_brackets(output) for output in outputs]
     return question_types
 

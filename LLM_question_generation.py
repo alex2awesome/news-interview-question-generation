@@ -28,8 +28,7 @@ def LLM_question_gen_prompt_loader(prompt, QA_seq):
 # (not-outline) for batching prompts 
 def LLM_question_generator_batch(prompt, QA_seqs, model, tokenizer):
     messages_batch = [LLM_question_gen_prompt_loader(prompt, QA_seq) for QA_seq in QA_seqs]
-    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
-    outputs = vllm_infer_batch(formatted_prompts, model)
+    outputs = vllm_infer_batch(messages_batch, model)
     LLM_questions = [extract_text_inside_brackets(output) for output in outputs]
     motivations = [extract_text_inside_parentheses(output) for output in outputs]
     return LLM_questions, motivations
@@ -51,8 +50,7 @@ def OUTLINE_LLM_QGen_prompt_loader(prompt, QA_seq, outline_statement, interview_
 # (outline) for batching prompts
 def OUTLINE_LLM_question_generator_batch(prompt, QA_seqs, outline_statement, interview_goals, general_questions, model, tokenizer):
     messages_batch = [OUTLINE_LLM_QGen_prompt_loader(prompt, QA_seq, outline, goals, gen_questions) for QA_seq, outline, goals, gen_questions in zip(QA_seqs, outline_statement, interview_goals, general_questions)]
-    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
-    outputs = vllm_infer_batch(formatted_prompts, model)
+    outputs = vllm_infer_batch(messages_batch, model)
     LLM_questions = [extract_text_inside_brackets(output) for output in outputs]
     motivations = [extract_text_inside_parentheses(output) for output in outputs]
     return LLM_questions, motivations

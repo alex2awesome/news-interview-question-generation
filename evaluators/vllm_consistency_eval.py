@@ -37,8 +37,7 @@ def consistency_compare(messages, model_name="meta-llama/Meta-Llama-3-70B-Instru
 # for batching
 def consistency_compare_batch(transcript_contexts, llm_questions, human_questions, LLM_question_types, Actual_question_types, model, tokenizer):
     messages_batch = [consistency_eval_prompt_loader(context, llm_question, human_question, llm_q_type, human_q_type) for context, llm_question, human_question, llm_q_type, human_q_type in zip(transcript_contexts, llm_questions, human_questions, LLM_question_types, Actual_question_types)]
-    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
-    outputs = vllm_infer_batch(formatted_prompts, model)
+    outputs = vllm_infer_batch(messages_batch, model)
     similarity_scores = [extract_text_inside_brackets(output) for output in outputs]
     similarity_scores = [
                             1 if result.lower() in ["similar", "high"]
@@ -82,8 +81,7 @@ def consistency_compare_process_dataset(df, output_dir="output_results", batch_s
 # for testing (batching)
 def for_testing_consistency_compare_batch(transcript_contexts, llm_questions, human_questions, LLM_question_types, Actual_question_types, model, tokenizer):
     messages_batch = [consistency_eval_prompt_loader(context, llm_question, human_question, llm_q_type, human_q_type) for context, llm_question, human_question, llm_q_type, human_q_type in zip(transcript_contexts, llm_questions, human_questions, LLM_question_types, Actual_question_types)]
-    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
-    outputs = vllm_infer_batch(formatted_prompts, model)
+    outputs = vllm_infer_batch(messages_batch, model)
     similarity_scores = [extract_text_inside_brackets(output) for output in outputs]
     similarity_scores = [
                             1 if result.lower() in ["similar", "high"]

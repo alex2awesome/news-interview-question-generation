@@ -9,23 +9,21 @@ import gc
 import torch
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
+from helper_functions import (
+    load_vllm_model, 
+    initialize_tokenizer, 
+    extract_text_inside_brackets,
+    find_project_root,
+    generate_vllm_response,
+    generate_INTERVIEWER_response_batch,
+    generate_SOURCE_response_batch,
+    extract_information_item_numbers,
+    count_information_items,
+    log_gpu_memory
+)
 from game_sim.game_sim_prompts import get_source_prompt_basic, get_source_starting_prompt, get_source_ending_prompt, get_source_specific_info_items_prompt, get_interviewer_prompt, get_interviewer_starting_prompt, get_interviewer_ending_prompt
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
-# ---- single use ---- #
-def vllm_infer(messages, model, tokenizer):
-    formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    output = model.generate(formatted_prompt, sampling_params)
-    return output[0].outputs[0].text
-
-def generate_vllm_response(prompt, role, model, tokenizer):
-    messages = [
-        {"role": "system", "content": f"{role}."},
-        {"role": "user", "content": prompt}
-    ]
-    return vllm_infer(messages, model, tokenizer)
 
 def conduct_interview(initial_prompt, num_turns, model_name="meta-llama/Meta-Llama-3-8B-Instruct"):
     model = load_vllm_model(model_name)
@@ -45,44 +43,6 @@ def conduct_interview(initial_prompt, num_turns, model_name="meta-llama/Meta-Lla
     print("\nFinal Conversation:\n" + conversation_history)
     return conversation_history
 
-# ---- batch use ---- #
-def vllm_infer_batch(messages_batch, model, tokenizer):
-    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
-    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    outputs = model.generate(formatted_prompts, sampling_params)
-    return [output.outputs[0].text for output in outputs]
-
-def generate_vllm_INTERVIEWER_response_batch(prompts, model, tokenizer):
-    messages_batch = [
-        [
-            {"role": "system", "content": "You are a journalistic interviewer."},
-            {"role": "user", "content": prompt}
-        ] for prompt in prompts
-    ]
-    return vllm_infer_batch(messages_batch, model, tokenizer)
-
-def generate_vllm_SOURCE_response_batch(prompts, model, tokenizer):
-    messages_batch = [
-        [
-            {"role": "system", "content": "You are a guest getting interviewed."},
-            {"role": "user", "content": prompt}
-        ] for prompt in prompts
-    ]
-    return vllm_infer_batch(messages_batch, model, tokenizer)
-
-# regex to match "Information Item {integer}" and extract the integer
-def extract_information_item_numbers(response):
-    return [int(num) for num in re.findall(r'(?i)information item #?(\d+)', response)]
-
-# Regular expression to match "Information item #{integer}"
-def count_information_items(info_items_text):
-    return len(re.findall(r'(?i)information item #?\d+', info_items_text))
-
-def log_gpu_memory():
-    for i in range(torch.cuda.device_count()):
-        allocated = torch.cuda.memory_allocated(i) / (1024 ** 3)
-        reserved = torch.cuda.memory_reserved(i) / (1024 ** 3)
-        print(f"GPU {i}: Allocated {allocated:.2f} GB, Reserved {reserved:.2f} GB")
 
 def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straightforward", interviewer_model_name="meta-llama/meta-llama-3.1-70b-instruct", source_model_name="meta-llama/meta-llama-3.1-70b-instruct", batch_size=20, output_dir="output_results/game_sim/conducted_interviews_basic"):
     os.makedirs(output_dir, exist_ok=True)
@@ -121,7 +81,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
                     for current_conversation, outline in zip(current_conversations[start_idx:end_idx], outlines)
                 ]
 
-            interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, interviewer_model, interviewer_tokenizer)
+            interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_prompts, interviewer_model, interviewer_tokenizer)
             interviewer_questions = [
                 extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
                 for response in interviewer_responses
@@ -160,7 +120,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
                     for current_conversation, info_item_list in zip(current_conversations[start_idx:end_idx], info_items)
                 ]
 
-                interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, source_model, source_tokenizer)
+                interviewee_specific_item_responses = generate_SOURCE_response_batch(specific_info_item_prompts, source_model, source_tokenizer)
 
                 specific_info_items = [
                 extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No information items align with the question"
@@ -176,7 +136,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
                     for current_conversation, info_item_list, specific_info_item in zip(current_conversations[start_idx:end_idx], info_items, specific_info_items)
                 ]
 
-            source_responses = generate_vllm_SOURCE_response_batch(source_prompts, source_model, source_tokenizer)
+            source_responses = generate_SOURCE_response_batch(source_prompts, source_model, source_tokenizer)
             source_answers = [extract_text_inside_brackets(response) for response in source_responses]
             current_conversations[start_idx:end_idx] = [
                 f"{ch}\nInterviewee: {response}"

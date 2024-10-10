@@ -16,7 +16,11 @@ from helper_functions import (
     initialize_tokenizer,
     extract_text_inside_brackets,
     stitch_csv_files,
-    find_project_root
+    find_project_root,
+    generate_SOURCE_response_batch,
+    generate_INTERVIEWER_response_batch,
+    extract_information_item_numbers,
+    count_information_items
 )
 from game_sim.game_sim_prompts import (
     get_source_prompt_intermediate,
@@ -29,37 +33,6 @@ from game_sim.game_sim_prompts import (
 )
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
-# ---- batch use ---- #
-def vllm_infer_batch(messages_batch, model, tokenizer):
-    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
-    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    outputs = model.generate(formatted_prompts, sampling_params)
-    return [output.outputs[0].text for output in outputs]
-
-def generate_vllm_INTERVIEWER_response_batch(prompts, model, tokenizer):
-    messages_batch = [
-        [
-            {"role": "system", "content": "You are a journalistic interviewer."},
-            {"role": "user", "content": prompt}
-        ] for prompt in prompts
-    ]
-    return vllm_infer_batch(messages_batch, model, tokenizer)
-
-def generate_vllm_SOURCE_response_batch(prompts, model, tokenizer):
-    messages_batch = [
-        [
-            {"role": "system", "content": "You are a guest getting interviewed."},
-            {"role": "user", "content": prompt}
-        ] for prompt in prompts
-    ]
-    return vllm_infer_batch(messages_batch, model, tokenizer)
-
-# Regex functions
-def extract_information_item_numbers(response):
-    return [int(num) for num in re.findall(r'(?i)information item #?(\d+)', response)]
-
-def count_information_items(info_items_text):
-    return len(re.findall(r'(?i)information item #?\d+', info_items_text))
 
 def select_info_items(info_item_numbers, used_info_items_set):
     N = len(info_item_numbers)
@@ -118,7 +91,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, interviewer_strategy="s
                     for current_conversation, outline in zip(current_conversations[start_idx:end_idx], outlines)
                 ]
 
-            interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, interviewer_model, interviewer_tokenizer)
+            interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_prompts, interviewer_model, interviewer_tokenizer)
 
             interviewer_questions = [
                 extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"Answer not in brackets:\n{response}"
@@ -152,7 +125,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, interviewer_strategy="s
                     in zip(current_conversations[start_idx:end_idx], info_items_list, personas_batch)
                 ]
 
-                source_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, source_model, source_tokenizer)
+                source_responses = generate_SOURCE_response_batch(starting_source_prompts, source_model, source_tokenizer)
                 source_answers = [extract_text_inside_brackets(response) for response in source_responses]
                 current_conversations[start_idx:end_idx] = [
                     f"{ch}\nInterviewee: {response}"
@@ -166,7 +139,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, interviewer_strategy="s
                     in zip(current_conversations[start_idx:end_idx], personas_batch)
                 ]
 
-                source_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, source_model, source_tokenizer)
+                source_responses = generate_SOURCE_response_batch(ending_source_prompts, source_model, source_tokenizer)
                 source_answers = [extract_text_inside_brackets(response) for response in source_responses]
                 current_conversations[start_idx:end_idx] = [
                     f"{ch}\nInterviewee: {response}"
@@ -178,7 +151,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, interviewer_strategy="s
                     get_source_specific_info_items_prompt(current_conversation, info_items)
                     for current_conversation, info_items in zip(current_conversations[start_idx:end_idx], info_items_list)
                 ]
-                interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, source_model, source_tokenizer)
+                interviewee_specific_item_responses = generate_SOURCE_response_batch(specific_info_item_prompts, source_model, source_tokenizer)
 
                 all_relevant_info_items = [
                     extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No information items align with the question."
@@ -225,7 +198,7 @@ def conduct_intermediate_interviews_batch(num_turns, df, interviewer_strategy="s
                     )
                 ]
 
-                source_responses = generate_vllm_SOURCE_response_batch(source_prompts, source_model, source_tokenizer)
+                source_responses = generate_SOURCE_response_batch(source_prompts, source_model, source_tokenizer)
                 source_answers = [extract_text_inside_brackets(response) for response in source_responses]
                 current_conversations[start_idx:end_idx] = [
                     f"{ch}\nInterviewee: {response}"

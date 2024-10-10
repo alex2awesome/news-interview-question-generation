@@ -8,13 +8,22 @@ import random
 import json
 import ast
 from vllm import LLM, SamplingParams
-from transformers import AutoTokenizer
 import gc
 import numpy as np
 from scipy.stats import beta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import load_vllm_model, initialize_tokenizer, extract_text_inside_brackets, stitch_csv_files, find_project_root
+from helper_functions import (
+    load_model, 
+    extract_text_inside_brackets, 
+    stitch_csv_files, 
+    find_project_root,
+    generate_INTERVIEWER_response_batch,
+    generate_SOURCE_response_batch,
+    extract_information_item_numbers,
+    count_information_items
+
+)
 from game_sim.game_sim_prompts import (
     get_source_starting_prompt, 
     get_source_ending_prompt, 
@@ -27,38 +36,6 @@ from game_sim.game_sim_prompts import (
 )
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
-# ---- batch use ---- #
-def vllm_infer_batch(messages_batch, model, tokenizer):
-    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
-    sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    outputs = model.generate(formatted_prompts, sampling_params)
-    return [output.outputs[0].text for output in outputs]
-
-def generate_vllm_INTERVIEWER_response_batch(prompts, model, tokenizer):
-    messages_batch = [
-        [
-            {"role": "system", "content": "You are a journalistic interviewer."},
-            {"role": "user", "content": prompt}
-        ] for prompt in prompts
-    ]
-    return vllm_infer_batch(messages_batch, model, tokenizer)
-
-def generate_vllm_SOURCE_response_batch(prompts, model, tokenizer):
-    messages_batch = [
-        [
-            {"role": "system", "content": "You are a guest getting interviewed."},
-            {"role": "user", "content": prompt}
-        ] for prompt in prompts
-    ]
-    return vllm_infer_batch(messages_batch, model, tokenizer)
-
-# from "Information Item {integer}", extracts {integer}
-def extract_information_item_numbers(response):
-    return [int(num) for num in re.findall(r'(?i)information item #?(\d+)', response)]
-
-# return total num of matches to "Information item #{integer}"
-def count_information_items(info_items_text):
-    return len(re.findall(r'(?i)information item #?\d+', info_items_text))
 
 # select random segments from a specified information item based on persona and persuasion level
 # def get_random_segments(segmented_info_items_str, chosen_info_item, used_segments_dict, persona, persuasion_level, max_proportion=1.0):
@@ -130,9 +107,7 @@ def sample_proportion_from_beta(persona, persuasion_level):
 
 def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", batch_size=50, output_dir="output_results/game_sim/conducted_interviews_advanced"):
     os.makedirs(output_dir, exist_ok=True)
-    model = load_vllm_model(model_name)
-    tokenizer = initialize_tokenizer(model_name)
-
+    model = load_model(model_name)
     num_samples = len(df)
     unique_info_item_counts = [0] * num_samples
     total_info_item_counts = [0] * num_samples
@@ -160,7 +135,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
             get_interviewer_starting_prompt(outline, "straightforward")
             for outline in outlines
         ]
-        starting_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(starting_interviewer_prompts, model, tokenizer)
+        starting_interviewer_responses = generate_INTERVIEWER_response_batch(starting_interviewer_prompts, model)
         starting_interviewer_questions = [
             extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
             for response in starting_interviewer_responses
@@ -175,7 +150,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
             get_source_starting_prompt(current_conversation, info_items, persona)
             for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
         ]
-        starting_interviewee_responses = generate_vllm_SOURCE_response_batch(starting_source_prompts, model, tokenizer)
+        starting_interviewee_responses = generate_SOURCE_response_batch(starting_source_prompts, model)
         starting_interviewee_answers = [extract_text_inside_brackets(response) for response in starting_interviewee_responses]
         current_conversations = [
             f"{ch}\nInterviewee: {response}"
@@ -191,7 +166,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
                 get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
                 for current_conversation, outline in zip(current_conversations, outlines)
             ]
-            interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_prompts, model, tokenizer)
+            interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_prompts, model)
             interviewer_questions = [extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}" for response in interviewer_responses]
             gc.collect()
 
@@ -205,7 +180,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
                 get_source_specific_info_items_prompt(current_conversation, info_items)
                 for current_conversation, info_items in zip(current_conversations, info_items_list)
             ]
-            interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch(specific_info_item_prompts, model, tokenizer)
+            interviewee_specific_item_responses = generate_SOURCE_response_batch(specific_info_item_prompts, model)
             specific_info_items = [
                 extract_text_inside_brackets(response) if extract_information_item_numbers(extract_text_inside_brackets(response)) else "No information items align with the question"
                 for response in interviewee_specific_item_responses
@@ -216,7 +191,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
                 get_source_persuasion_level_prompt(current_conversation, persona)
                 for current_conversation, persona in zip(current_conversations, personas)
             ]
-            interviewee_persuasion_level_responses = generate_vllm_SOURCE_response_batch(persuasion_level_prompts, model, tokenizer)
+            interviewee_persuasion_level_responses = generate_SOURCE_response_batch(persuasion_level_prompts, model)
             persuasion_levels = [
                 extract_text_inside_brackets(response)
                 for response in interviewee_persuasion_level_responses
@@ -242,7 +217,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
                 get_source_persona_prompt_advanced(current_conversation, info_items, persona, )
                 for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
             ]
-            interviewee_responses = generate_vllm_SOURCE_response_batch(source_prompts, model, tokenizer)
+            interviewee_responses = generate_SOURCE_response_batch(source_prompts, model)
             interviewee_answers = [extract_text_inside_brackets(response) for response in interviewee_responses]
             current_conversations = [
                 f"{ch}\nInterviewee: {response}"
@@ -255,7 +230,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
             get_interviewer_ending_prompt(current_conversation, outline, "straightforward")
             for current_conversation, outline in zip(current_conversations, outlines)
         ]
-        ending_interviewer_responses = generate_vllm_INTERVIEWER_response_batch(interviewer_ending_prompts, model, tokenizer)
+        ending_interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_ending_prompts, model)
         ending_interviewer_questions = [
             extract_text_inside_brackets(response) if extract_text_inside_brackets(response) else f"answer not in brackets:\n {response}"
             for response in ending_interviewer_responses
@@ -269,7 +244,7 @@ def conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta
             get_source_ending_prompt(current_conversation, info_items, persona)
             for current_conversation, info_items, persona in zip(current_conversations, info_items_list, personas)
         ]
-        ending_interviewee_responses = generate_vllm_SOURCE_response_batch(ending_source_prompts, model, tokenizer)
+        ending_interviewee_responses = generate_SOURCE_response_batch(ending_source_prompts, model)
         ending_interviewee_answers = [extract_text_inside_brackets(response) for response in ending_interviewee_responses]
         current_conversations = [
             f"{ch}\nInterviewee: {response}"
@@ -347,7 +322,12 @@ SOURCE_COLOR = "\033[92m"        # Green
 PROMPT_COLOR = "\033[93m"        # Yellow
 ERROR_COLOR = "\033[91m"         # Red
 
-def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct", output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"):
+def human_eval(
+        num_turns,
+        df, 
+        model_name="meta-llama/meta-llama-3.1-70b-instruct", 
+        output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"
+):
     os.makedirs(output_dir, exist_ok=True)
     
     role = input(f"{PROMPT_COLOR}Would you like to play as the interviewer (A) or source (B)? Please type 'A' or 'B': {RESET}").upper()
@@ -404,8 +384,7 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
     unique_info_items_set = set()
     total_info_item_count = count_information_items(info_items)
 
-    model = load_vllm_model(model_name)
-    tokenizer = initialize_tokenizer(model_name)
+    model = load_model(model_name)
 
     #### 1. FIRST interviewer question and source answer
     if role == "interviewer":  # human is interviewer
@@ -423,13 +402,13 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         current_conversation = f"(Human) Interviewer: {human_question}"
 
         starting_source_prompt = get_source_starting_prompt(current_conversation, info_items, persona)
-        source_response = generate_vllm_SOURCE_response_batch([starting_source_prompt], model, tokenizer)
+        source_response = generate_SOURCE_response_batch([starting_source_prompt], model)
         source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
         current_conversation += f"\nInterviewee: {source_answer}"
         print(f"\n{SOURCE_COLOR}Interviewee (LLM): {source_answer}{RESET}\n")
     else:  # human is source
         starting_interviewer_prompt = get_interviewer_starting_prompt(outline, num_turns, "straightforward")
-        interviewer_response = generate_vllm_INTERVIEWER_response_batch([starting_interviewer_prompt], model, tokenizer)
+        interviewer_response = generate_INTERVIEWER_response_batch([starting_interviewer_prompt], model)
         interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
         current_conversation = f"Interviewer: {interviewer_question}"
         print(f"\n{INTERVIEWER_COLOR}Interviewer Starting Remark (LLM): {interviewer_question}{RESET}\n")
@@ -455,11 +434,11 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
             current_conversation += f"\n(Human) Interviewer: {human_question}"
 
             specific_info_items_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
-            specific_info_items_response = generate_vllm_SOURCE_response_batch([specific_info_items_prompt], model, tokenizer)
+            specific_info_items_response = generate_SOURCE_response_batch([specific_info_items_prompt], model)
             all_relevant_info_items = extract_text_inside_brackets(specific_info_items_response[0]) or "No information items align with the question"
 
             persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona)
-            persuasion_level_response = generate_vllm_SOURCE_response_batch([persuasion_level_prompt], model, tokenizer)
+            persuasion_level_response = generate_SOURCE_response_batch([persuasion_level_prompt], model)
             persuasion_level = extract_text_inside_brackets(persuasion_level_response[0]) or "0"
 
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)
@@ -474,19 +453,19 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
             unique_info_items_set.update(sampled_item_numbers)
 
             source_prompt = get_source_persona_prompt_advanced(current_conversation, relevant_info_items_str, persona, persuasion_level_int)
-            source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
+            source_response = generate_SOURCE_response_batch([source_prompt], model)
             source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
             current_conversation += f"\nInterviewee: {source_answer}"
             print(f"\n{SOURCE_COLOR}Interviewee (LLM): {source_answer}{RESET}")
         else:  # human is source
             interviewer_prompt = get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
-            interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
+            interviewer_response = generate_INTERVIEWER_response_batch([interviewer_prompt], model)
             interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
             current_conversation += f"\nInterviewer: {interviewer_question}"
             print(f"\n{INTERVIEWER_COLOR}Interviewer (LLM): {interviewer_question}{RESET}\n\n")
 
             specific_info_item_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
-            interviewee_specific_item_responses = generate_vllm_SOURCE_response_batch([specific_info_item_prompt], model, tokenizer)
+            interviewee_specific_item_responses = generate_SOURCE_response_batch([specific_info_item_prompt], model)
             all_relevant_info_items = extract_text_inside_brackets(interviewee_specific_item_responses[0]) if extract_information_item_numbers(extract_text_inside_brackets(interviewee_specific_item_responses[0])) else "No information items align with the question"
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)  # list of numbers
             
@@ -534,13 +513,13 @@ def human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct
         current_conversation += f"\n(Human) Interviewer: {human_question}"
 
         source_prompt = get_source_ending_prompt(current_conversation, persona)
-        source_response = generate_vllm_SOURCE_response_batch([source_prompt], model, tokenizer)
+        source_response = generate_SOURCE_response_batch([source_prompt], model)
         source_answer = extract_text_inside_brackets(source_response[0]) or source_response[0]
         current_conversation += f"\nInterviewee: {source_answer}"
         print(f"{SOURCE_COLOR}Interviewee (LLM): {source_answer}{RESET}")
     else:
         interviewer_prompt = get_interviewer_ending_prompt(current_conversation, outline, "straightforward")
-        interviewer_response = generate_vllm_INTERVIEWER_response_batch([interviewer_prompt], model, tokenizer)
+        interviewer_response = generate_INTERVIEWER_response_batch([interviewer_prompt], model)
         interviewer_question = extract_text_inside_brackets(interviewer_response[0]) or interviewer_response[0]
         current_conversation += f"\nInterviewer: {interviewer_question}"
         print(f"\n{INTERVIEWER_COLOR}Interviewer (LLM): {interviewer_question}{RESET}\n")

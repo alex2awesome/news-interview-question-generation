@@ -10,7 +10,13 @@ import os
 import torch
 import pandas as pd
 import torch.distributed as dist
+from collections import defaultdict
 
+## global variables
+_tokenizer = None
+_openai_model_name = 'gpt-4o'
+_client = None
+_model = defaultdict(lambda: None)
 
 # ------------- LLM section ------------- #
 
@@ -23,35 +29,78 @@ def setup_hf_env():
     os.environ['HF_TOKEN'] = config_data["HF_TOKEN"]
     return os.getenv('HF_HOME')
 
+
 # vllm framework model loader
 def load_vllm_model(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
-    torch.cuda.empty_cache()
-    torch.cuda.memory_summary(device=None, abbreviated=False)
+    global _model
+    if _model[model_name] is not None:
+        torch.cuda.empty_cache()
+        torch.cuda.memory_summary(device=None, abbreviated=False)
 
-    model = LLM(
-        model_name,
-        dtype=torch.float16,
-        tensor_parallel_size=torch.cuda.device_count(),
-        enforce_eager=True,
-        max_model_len=60_000
-    )
+        model = LLM(
+            model_name,
+            dtype=torch.float16,
+            tensor_parallel_size=torch.cuda.device_count(),
+            enforce_eager=True,
+            max_model_len=60_000
+        )
 
-    memory_allocated = torch.cuda.memory_allocated()
-    memory_reserved = torch.cuda.memory_reserved()
-    
-    print(f"Model {model_name} loaded. Memory Allocated: {memory_allocated / (1024 ** 3):.2f} GB")
-    print(f"Model {model_name} loaded. Memory Reserved: {memory_reserved / (1024 ** 3):.2f} GB")
-    return model
+        memory_allocated = torch.cuda.memory_allocated()
+        memory_reserved = torch.cuda.memory_reserved()
+        
+        print(f"Model {model_name} loaded. Memory Allocated: {memory_allocated / (1024 ** 3):.2f} GB")
+        print(f"Model {model_name} loaded. Memory Reserved: {memory_reserved / (1024 ** 3):.2f} GB")
+        _model[model_name] = model
+    return _model[model_name]
+
+
+def load_model(model_name):
+    """Generic function to either load a VLLM model or a client (e.g. OpenAI)."""
+    if "gpt" in model_name:
+        global _openai_model_name
+        _openai_model_name = model_name
+        return get_openai_client()
+    else:
+        return load_vllm_model(model_name)
+
 
 def initialize_tokenizer(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    return tokenizer
+    global _tokenizer
+    if _tokenizer is None:
+        _tokenizer = AutoTokenizer.from_pretrained(model_name)
+    return _tokenizer
+
 
 # for batching
 def vllm_infer_batch(messages_batch, model):
+    tokenizer = initialize_tokenizer(model.model_name)
+    formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
     sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
-    outputs = model.generate(messages_batch, sampling_params)
+    outputs = model.generate(formatted_prompts, sampling_params)
     return [output.outputs[0].text for output in outputs]
+
+
+def query_openai(message, model=None):
+    if model is None:
+        model = get_openai_client()
+
+    completion = model.chat.completions.create(
+        model=_openai_model_name,
+        messages=message
+    )
+    return completion.choices[0].message.content
+
+
+def openai_infer_batch(messages_batch, model):
+    return [query_openai(messages, model=model) for messages in messages_batch]
+
+
+def infer_batch(messages_batch, model):
+    if isinstance(model, OpenAI):
+        return openai_infer_batch(messages_batch, model)
+    else:
+        return vllm_infer_batch(messages_batch, model)
+
 
 # for single-use testing only
 def vllm_infer(messages, model_name="meta-llama/meta-llama-3.1-70b-instruct"):
@@ -62,11 +111,66 @@ def vllm_infer(messages, model_name="meta-llama/meta-llama-3.1-70b-instruct"):
     output = model.generate(formatted_prompt, sampling_params)
     return output[0].outputs[0].text
 
+
+def generate_vllm_response(prompt, role, model, tokenizer):
+    messages = [
+        {"role": "system", "content": f"{role}."},
+        {"role": "user", "content": prompt}
+    ]
+    return vllm_infer(messages, model, tokenizer)
+
 # setup openai API
-def get_openai_client(key_file_path='~/.openai-api-key.txt'):
-    key_path = os.path.expanduser(key_file_path)
-    client = OpenAI(api_key=open(key_path).read().strip())
-    return client
+OPENAI_KEY_PATH = os.path.expanduser('~/.openai-api-key.txt')
+if not os.path.exists(OPENAI_KEY_PATH):
+    OPENAI_KEY_PATH = os.path.expanduser('~/.openai-isi-project-key.txt')
+if not os.path.exists(OPENAI_KEY_PATH):
+    raise ValueError("OpenAI API key file not found.")
+
+
+def get_openai_client(key_file_path=OPENAI_KEY_PATH):
+    global _client
+    if _client is None:
+        key_path = os.path.expanduser(key_file_path)
+        os.environ['OPENAI_API_KEY'] = open(key_path).read().strip()
+        _client = OpenAI()
+    return _client
+
+
+##
+## 
+## Game Simulation Helper Functions
+## 
+## 
+def generate_INTERVIEWER_response_batch(prompts, model=None):
+    messages_batch = [
+        [
+            {"role": "system", "content": "You are a journalistic interviewer."},
+            {"role": "user", "content": prompt}
+        ] for prompt in prompts
+    ]
+    return infer_batch(messages_batch, model)
+
+
+def generate_SOURCE_response_batch(prompts, model=None):
+    messages_batch = [
+        [
+            {"role": "system", "content": "You are a guest getting interviewed."},
+            {"role": "user", "content": prompt}
+        ] for prompt in prompts
+    ]
+    return infer_batch(messages_batch, model)
+
+
+# from "Information Item {integer}", extracts {integer}
+def extract_information_item_numbers(response):
+    return [int(num) for num in re.findall(r'(?i)information item #?(\d+)', response)]
+
+
+# return total num of matches to "Information item #{integer}"
+def count_information_items(info_items_text):
+    return len(re.findall(r'(?i)information item #?\d+', info_items_text))
+
+
 
 # ------------- dataset prep section ------------- #
 
@@ -246,6 +350,14 @@ def calculate_gpt4_cost(prompt_file_path, response_file_path, model_name="meta-l
     print(f"Total Cost: ${total_cost:.4f}")
 
     return total_prompt_tokens, total_response_tokens, prompt_cost, response_cost, total_cost
+
+def log_gpu_memory():
+    for i in range(torch.cuda.device_count()):
+        allocated = torch.cuda.memory_allocated(i) / (1024 ** 3)
+        reserved = torch.cuda.memory_reserved(i) / (1024 ** 3)
+        print(f"GPU {i}: Allocated {allocated:.2f} GB, Reserved {reserved:.2f} GB")
+
+
 
 if __name__ == "__main__": 
     directory_path = 'output_results/gpt_batching/gpt4o_csv_outputs'

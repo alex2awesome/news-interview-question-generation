@@ -82,7 +82,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 # parameters of the beta distribution 
 PERSONA_DICT = {
     'anxious': [(2, 4), (4, 4), (4, 2)],
-    'avoidant': [(1.5, 3), (4, 3), (7, 2)],
+    'defensive': [(1.5, 3), (4, 3), (7, 2)],
     'straightforward': [(4, 1.5), (5, 1), (7, 0.5)], 
     'poor explainer': [(2, 3), (3, 2), (4, 1)], 
     'dominating': [(5, 1.5), (6, 1), (8, 0.5)], 
@@ -317,9 +317,9 @@ def get_all_relevant_info_items(info_item_numbers, info_items_dict):
 
 # ANSI escape codes for colors
 RESET = "\033[0m"        # Resets the color
-INTERVIEWER_COLOR = "\033[94m"  # Blue
+INTERVIEWER_COLOR = "\033[94m"   # Blue
 SOURCE_COLOR = "\033[92m"        # Green
-PROMPT_COLOR = "\033[93m"        # Yellow
+PROMPT_COLOR = "\033[35m"        # Yellow
 ERROR_COLOR = "\033[91m"         # Red
 
 def human_eval(
@@ -395,7 +395,7 @@ def human_eval(
 
         {outline}
 
-        Use this outline to help you extract as much information from the source as possible.{RESET}
+        Use this outline to help you extract as much information from the source as possible, and think about relevant follow-up questions.{RESET}
         '''
         print(f"\n{interviewer_prompt}")
         human_question = input(f"\n\n{INTERVIEWER_COLOR}You only have time for {num_turns} questions. Now, please input your starting remark: {RESET}")
@@ -423,7 +423,7 @@ def human_eval(
         num_turns_left = num_turns - (1 + turn)
 
         if role == "interviewer":  # human is interviewer
-            interviewer_prompt = '''
+            interviewer_prompt = f'''
             {PROMPT_COLOR}Assess whether your previous question was fully answered and whether you can move on to the next one.
             Analyze the source's most recent response and identify their likely emotional/cognitive state (and persona).
             Based on the detected persona, decide how to proceed with your questioning.
@@ -527,8 +527,12 @@ def human_eval(
         human_answer = input(f"{SOURCE_COLOR}Please input your final ending remark: {RESET}")
         current_conversation += f"\n(Human) Interviewee: {human_answer}"
 
-    print(f"\n{PROMPT_COLOR}Final Interview Conversation:{RESET}")
-    print(current_conversation)
+    # print report
+    if role == "interviewer":
+        print(f"\n{PROMPT_COLOR}Congratulations! You have successfully conducted an interview as the interviewer.{RESET}")
+        print(f"\n{PROMPT_COLOR}You have extracted {len(unique_info_items_set)} unique information items out of {total_info_item_count} total information items.{RESET}")
+        print(f"\n{PROMPT_COLOR}Here are the total information items in the interview:\n{info_items}{RESET}")
+        print(f"\n{PROMPT_COLOR}You extracted these: {unique_info_items_set}{RESET}")
 
     output_df = pd.DataFrame({
         'id': sample['id'],
@@ -549,17 +553,26 @@ def human_eval(
     return output_df
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--num_turns", type=int, default=4, help="Number of turns in the interview")
+    parser.add_argument("--model_name", type=str, default="meta-llama/meta-llama-3.1-70b-instruct", help="Model name")
+    parser.add_argument("--batch_size", type=int, default=50, help="Batch size for conducting interviews")
+    parser.add_argument("--dataset_path", type=str, default="output_results/game_sim/outlines/final_df_with_outlines.csv", help="Path to the dataset")
+    parser.add_argument("--output_dir", type=str, default="output_results/game_sim/conducted_interviews_advanced", help="Output directory for saving conducted interviews")
+    parser.add_argument("--human_eval", action="store_true", help="Conduct human evaluation")
+
+    args = parser.parse_args()
+
     current_path = os.path.dirname(os.path.abspath(__file__))
     project_root = find_project_root(current_path, 'news-interview-question-generation')
-    dataset_path = os.path.join(project_root, "output_results/game_sim/outlines/final_df_with_outlines.csv")
+    dataset_path = os.path.join(project_root, args.dataset_path)
     df = pd.read_csv(dataset_path)
-    df = df.head(50)
-    print(df)
-    num_turns = 4
+    df = df.head(args.batch_size)
 
-    # HUMAN EVAL:
-    human_evaluation = human_eval(num_turns, df, model_name="meta-llama/meta-llama-3.1-8b-instruct")
-    print(human_evaluation)
+    if args.human_eval:
+        human_evaluation = human_eval(args.num_turns, df, model_name=args.model_name, output_dir=args.output_dir)
+        print(human_evaluation)
 
     # simulated_interviews = conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct")
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")

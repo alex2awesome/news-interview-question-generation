@@ -47,8 +47,9 @@ PERSONA_DICT = {
     'dominating': [(2, 6), (6, 6), (8, 1.6)],
     'clueless': [(3.6, 8.0), (5, 5), (8.1, 1.6)]
  }
+UNIFORM_BETA_PARAMS = (1, 1)
 
-def sample_proportion_from_beta(persona, persuasion_level):
+def sample_proportion_from_beta(persona, persuasion_level, game_level="advanced"):
     """
     Sample a proportion from the beta distribution based on persona and persuasion level.
 
@@ -59,13 +60,18 @@ def sample_proportion_from_beta(persona, persuasion_level):
     Returns:
         float: A proportion between 0 and 1 sampled from the beta distribution.
     """
-    a, b = PERSONA_DICT[persona][persuasion_level]
-    proportion = beta.rvs(a, b)
-    proportion = max(0.0, min(1.0, proportion))
-    return proportion
+    if game_level == "basic":
+        return 1 
+    elif game_level == "intermediate":
+        return PERSONA_DICT[persona][1]
+    else:
+        a, b = PERSONA_DICT[persona][persuasion_level]
+        proportion = beta.rvs(a, b)
+        proportion = max(0.0, min(1.0, proportion))
+        return proportion
 
 
-def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level, used_info_items):
+def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level, used_info_items, game_level="advanced"):
     """
     Retrieve relevant information items based on the given parameters.
 
@@ -115,7 +121,7 @@ def get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuas
         return "No information items align with the question", []
     
     # Sample a proportion of items to return based on persona and persuasion level
-    proportion = sample_proportion_from_beta(persona, persuasion_level)
+    proportion = sample_proportion_from_beta(persona, persuasion_level, game_level=game_level)
     num_items_to_retrieve = int(proportion * N)
     
     # Adjust the number of items to return if it exceeds available items
@@ -176,7 +182,8 @@ def conduct_advanced_interviews_batch(
         interviewer_model_name="meta-llama/meta-llama-3.1-70b-instruct", 
         source_model_name="gpt-4o",
         batch_size=50, 
-        output_dir="output_results/game_sim/conducted_interviews_advanced"
+        output_dir="output_results/game_sim/conducted_interviews_advanced",
+        game_level="advanced"
 ):
     os.makedirs(output_dir, exist_ok=True)
     interviewer_model = load_model(interviewer_model_name)
@@ -212,7 +219,11 @@ def conduct_advanced_interviews_batch(
         unique_info_items_sets = [set() for _ in range(end_idx - start_idx)]
         total_info_item_counts[start_idx:end_idx] = [count_information_items(info_items) for info_items in info_items_list]
         
-        personas = [random.choice(persona_types) for _ in range(end_idx - start_idx)]
+        # basic just uses the "straightforward" persona
+        if game_level == "basic":
+            personas = ["straightforward"] * (end_idx - start_idx)
+        else:
+            personas = [random.choice(persona_types) for _ in range(end_idx - start_idx)]
 
         #### 1. Handle the FIRST interviewer question and source answer outside the loop
         # The following section initializes the first question from the interviewer
@@ -348,7 +359,14 @@ def conduct_advanced_interviews_batch(
 
             # Filter the specific_info_items to the ones we haven't used yet
             info_items_to_use = [
-                get_relevant_info_items(info_item_numbers, info_items_dict, persona, persuasion_level, used)
+                get_relevant_info_items(
+                    info_item_numbers, 
+                    info_items_dict,
+                    persona, 
+                    persuasion_level, 
+                    used,
+                    game_level=game_level
+                )
                 for info_item_numbers, info_items_dict, persona, persuasion_level, used in zip(
                     specific_info_items_numbers, batch_df['info_items_dict'], personas, persuasion_level_ints, used_info_items
                 )
@@ -741,7 +759,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_path", type=str, default="output_results/game_sim/outlines/final_df_with_outlines.csv", help="Path to the dataset")
     parser.add_argument("--output_dir", type=str, default="output_results/game_sim/conducted_interviews_advanced", help="Output directory for saving conducted interviews")
     parser.add_argument("--human_eval", action="store_true", help="Conduct human evaluation")
-
+    parser.add_argument("--game_level", type=str, default="advanced", help="Game level for conducting interviews")
     args = parser.parse_args()
 
     current_path = os.path.dirname(os.path.abspath(__file__))
@@ -755,12 +773,12 @@ if __name__ == "__main__":
         print(human_evaluation)
     else:
         conducted_interviews = conduct_advanced_interviews_batch(
-            args.num_turns, 
-            df, 
+            args.num_turns, df, 
             interviewer_model_name=args.interviewer_model_name, 
             source_model_name=args.source_model_name, 
             batch_size=args.batch_size, 
-            output_dir=args.output_dir
+            output_dir=args.output_dir,
+            game_level=args.game_level
         )
         print(conducted_interviews)
 

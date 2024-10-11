@@ -39,14 +39,14 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 # parameters of the beta distribution 
 PERSONA_DICT = {
-    'anxious': [(2, 4), (4, 4), (4, 2)],
-    'avoidant': [(2, 4), (3, 3), (4, 2)],
-    'defensive': [(1.5, 3), (4, 3), (7, 2)],
-    'straightforward': [(4, 1.5), (5, 1), (7, 0.5)], 
-    'poor explainer': [(2, 3), (3, 2), (4, 1)], 
-    'dominating': [(5, 1.5), (6, 1), (8, 0.5)], 
-    'clueless': [(1, 4), (2, 3), (3, 2)] 
-}
+    'anxious': [(3, 7), (5, 5), (9, 2)],
+    'avoidant': [(2.5, 6.5), (7, 7), (7.5, 1.5)],
+    'defensive': [(4, 8), (8.5, 6.5), (8.5, 2)],
+    'straightforward': [(2, 5.5), (5.5, 5.5), (10, 2.5)],
+    'poor explainer': [(3.5, 7.5), (7.5, 7.5), (7, 1.2)],
+    'dominating': [(2, 6), (6, 6), (8, 1.6)],
+    'clueless': [(3.6, 8.0), (5, 5), (8.1, 1.6)]
+ }
 
 def sample_proportion_from_beta(persona, persuasion_level):
     """

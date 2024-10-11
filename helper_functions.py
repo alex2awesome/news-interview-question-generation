@@ -163,11 +163,35 @@ def generate_SOURCE_response_batch(prompts, model=None):
 
 # from "Information Item {integer}", extracts {integer}
 def extract_information_item_numbers(response):
+    """
+    Extracts all integers from a given response string that are associated with 
+    the phrase "Information Item". The function looks for patterns in the form 
+    of "Information Item {integer}" or "Information Item #{integer}" and returns 
+    a list of the extracted integers.
+
+    Args:
+        response (str): The input string from which to extract information item numbers.
+
+    Returns:
+        list: A list of integers representing the extracted information item numbers.
+    """
     return [int(num) for num in re.findall(r'(?i)information item #?(\d+)', response)]
 
 
 # return total num of matches to "Information item #{integer}"
 def count_information_items(info_items_text):
+    """
+    Counts the total number of occurrences of the pattern "Information item #{integer}" 
+    in the provided text. The function is case-insensitive and looks for both 
+    "Information item {integer}" and "Information item #{integer}" patterns.
+
+    Args:
+        info_items_text (str): The text in which to count the occurrences of 
+        information item patterns.
+
+    Returns:
+        int: The total number of matches found for the pattern "Information item #{integer}".
+    """
     return len(re.findall(r'(?i)information item #?\d+', info_items_text))
 
 
@@ -288,18 +312,21 @@ def extract_text_inside_parentheses(text):
         return match.group(1)
     return "Error"
 
+
+import glob
 def stitch_csv_files(output_dir="output_results", final_output_file="all_results_concatenated.csv"):
-    all_files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.csv')]
-    
-    all_dfs = []
-    for file in all_files:
-        df = pd.read_csv(file)
-        all_dfs.append(df)
-    
+    json_files = glob.glob(os.path.join(output_dir, '*.jsonl'))
+    json_dfs = list(map(lambda x: pd.read_json(x, lines=True), json_files))
+    csv_files = glob.glob(os.path.join(output_dir, '*.csv'))
+    csv_dfs = list(map(lambda x: pd.read_csv(x), csv_files))
+    all_dfs = json_dfs + csv_dfs
+        
     final_df = pd.concat(all_dfs, ignore_index=True)
     final_output_path = os.path.join(output_dir, final_output_file)
-    final_df.to_csv(final_output_path, index=False)
-    print(f"All CSV files stitched together into {final_output_path}")
+    if final_output_file.endswith('.csv'):
+        final_df.to_csv(final_output_path, index=False)
+    elif final_output_file.endswith('.jsonl'):
+        final_df.to_json(final_output_path, orient='records', lines=True)
     return final_df
 
 # ------------- MISC section ------------- #

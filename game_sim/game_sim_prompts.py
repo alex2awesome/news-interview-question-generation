@@ -287,16 +287,16 @@ def get_source_persuasion_level_prompt(current_conversation, persona):
     You are a {persona} source.
     {persuation_prompt}
     
-    Evaluate the following conversation, pay special attention to the last question. Given your {persona} persona, do you feel persuaded?
+    Evaluate the following conversation, especially the last question. Given your {persona} persona, do you overall feel persuaded?
     
     {current_conversation}
 
-    Your goal is to analyze how persuasive the last question is given your {persona} persona. Think about this step-by-step. Is the interviewer using language that influences someone with your persona or is it inconsequential?
+    Your goal is to analyze how persuasive the last question is given your {persona} persona. Think about this step-by-step. Is the interviewer using language that influences someone with your persona?
     After you have evaluated the interviewer's question, assign a score based on the following criteria:
 
     - 0: The question is not persuasive at all and does nothing to help you trust them more.
-    - 1: The question is slightly persuasive and you are be willing to engage more.
-    - 2: The question is significantly persuasive and you are fully willing to engage and trust them.
+    - 1: The question is somewhat persuasive and you are a little willing to engage.
+    - 2: The question is persuasive enough and you are willing to engage and trust them.
 
     After thinking things through, please provide your final answer enclosed in square brackets with just the number (e.g., [1]).
 

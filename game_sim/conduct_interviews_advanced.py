@@ -29,7 +29,10 @@ from game_sim.game_sim_prompts import (
     get_source_ending_prompt, 
     get_source_specific_info_items_prompt, 
     get_source_persuasion_level_prompt, 
+    get_source_prompt_basic,
+    get_source_prompt_intermediate,
     get_source_persona_prompt_advanced, 
+    get_interviewer_prompt,
     get_advanced_interviewer_prompt, 
     get_interviewer_starting_prompt, 
     get_interviewer_ending_prompt
@@ -183,7 +186,8 @@ def conduct_advanced_interviews_batch(
         source_model_name="gpt-4o",
         batch_size=50, 
         output_dir="output_results/game_sim/conducted_interviews_advanced",
-        game_level="advanced"
+        game_level="advanced",
+        interviewer_strategy="straightforward"
 ):
     os.makedirs(output_dir, exist_ok=True)
     interviewer_model = load_model(interviewer_model_name)
@@ -292,10 +296,16 @@ def conduct_advanced_interviews_batch(
             num_turns_left = num_turns - turn
             
             # Generate prompts for the interviewer based on the current conversation, outline, and remaining turns
-            interviewer_prompts = [
-                get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
-                for current_conversation, outline in zip(current_conversations, outlines)
-            ]
+            if interviewer_strategy == "straightforward":
+                interviewer_prompts = [
+                    get_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
+                        for current_conversation, outline in zip(current_conversations, outlines)
+                ]
+            else:
+                interviewer_prompts = [
+                    get_advanced_interviewer_prompt(current_conversation, outline, num_turns_left, "straightforward")
+                        for current_conversation, outline in zip(current_conversations, outlines)
+                ]
             
             # Generate responses for the interviewer prompts using the interviewer model
             interviewer_responses = generate_INTERVIEWER_response_batch(interviewer_prompts, interviewer_model)
@@ -334,28 +344,32 @@ def conduct_advanced_interviews_batch(
                 for response in specific_info_items
             ]
 
-            ## Goal: Find level of persuasion from the interviewee based on the current conversation and persona.
-            # Generate prompts
-            persuasion_level_prompts = [
-                get_source_persuasion_level_prompt(current_conversation, persona)
-                for current_conversation, persona in zip(current_conversations, personas)
-            ]
-            
-            # Generate responses
-            interviewee_persuasion_level_responses = generate_SOURCE_response_batch(persuasion_level_prompts, source_model)
-            
-            # Extract persuasion levels from the responses
-            persuasion_levels = [
-                extract_text_inside_brackets(response)
-                for response in interviewee_persuasion_level_responses
-            ]
+            ## Persuasion level is only used in the advanced game level.
+            if game_level == "advanced":
+                ## Goal: Find level of persuasion from the interviewee based on the current conversation and persona.
+                # Generate prompts
+                persuasion_level_prompts = [
+                    get_source_persuasion_level_prompt(current_conversation, persona)
+                    for current_conversation, persona in zip(current_conversations, personas)
+                ]
+                
+                # Generate responses
+                interviewee_persuasion_level_responses = generate_SOURCE_response_batch(persuasion_level_prompts, source_model)
+                
+                # Extract persuasion levels from the responses
+                persuasion_levels = [
+                    extract_text_inside_brackets(response)
+                    for response in interviewee_persuasion_level_responses
+                ]
 
-            # Convert persuasion levels to integers if possible
-            persuasion_level_ints = [
-                int(persuasion_level) 
-                if persuasion_level.isdigit() else 0 
-                for persuasion_level in persuasion_levels
-            ]
+                # Convert persuasion levels to integers if possible
+                persuasion_level_ints = [
+                    int(persuasion_level) 
+                    if persuasion_level.isdigit() else 0 
+                    for persuasion_level in persuasion_levels
+                ]
+            else:
+                persuasion_level_ints = [1] * len(current_conversations)
 
             # Filter the specific_info_items to the ones we haven't used yet
             info_items_to_use = [
@@ -382,11 +396,22 @@ def conduct_advanced_interviews_batch(
             # The following section generates prompts for the source's response based on the current conversation, 
             # relevant information items, and the persona of the interviewee.
             # It uses the `get_source_persona_prompt_advanced` function to create these prompts.
-            source_prompts = [
-                get_source_persona_prompt_advanced(current_conversation, info_items[0], persona, persuasion_level)
-                    for current_conversation, info_items, persona, persuasion_level 
-                    in zip(current_conversations, info_items_to_use, personas, persuasion_level_ints)
-            ]
+            if game_level == "basic":
+                source_prompts = [
+                    get_source_prompt_basic(current_conversation, info_items[0]) # info_items is a tuple (<concatted info items>, <list of info item numbers>), we just want the first, a string
+                        for current_conversation, info_items in zip(current_conversations, info_items_to_use)
+                ]
+            elif game_level == "intermediate":
+                source_prompts = [
+                    get_source_prompt_intermediate(current_conversation, info_items[0], persona) # info_items is a tuple (<concatted info items>, <list of info item numbers>), we just want the first, a string
+                        for current_conversation, info_items, persona in zip(current_conversations, info_items_to_use, personas)
+                ]
+            else:
+                source_prompts = [
+                    get_source_persona_prompt_advanced(current_conversation, info_items[0], persona, persuasion_level) # info_items is a tuple (<concatted info items>, <list of info item numbers>), we just want the first, a string
+                        for current_conversation, info_items, persona, persuasion_level 
+                        in zip(current_conversations, info_items_to_use, personas, persuasion_level_ints)
+                ]
             
             # The generated prompts are then passed to the `generate_SOURCE_response_batch` function to obtain responses
             # from the source model. These responses simulate the interviewee's answers.
@@ -496,7 +521,7 @@ def conduct_advanced_interviews_batch(
         batch_output_df.to_json(batch_file_path, orient='records', lines=True)
         print(f"Batch {start_idx} to {end_idx} saved to {batch_file_path}")
 
-    final_df = stitch_csv_files(output_dir, 'all_advanced_interviews_conducted.jsonl')
+    final_df = stitch_csv_files(output_dir, f'all_{game_level}_interviews_conducted.jsonl')
     return final_df
 
 

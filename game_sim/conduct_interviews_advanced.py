@@ -536,7 +536,8 @@ def human_eval(
         num_turns,
         df, 
         model_name="meta-llama/meta-llama-3.1-70b-instruct", 
-        output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval"
+        output_dir="output_results/game_sim/conducted_interviews_advanced/human_eval",
+        interview_id=None
 ):
     os.makedirs(output_dir, exist_ok=True)
     
@@ -586,7 +587,10 @@ def human_eval(
         print(f"{ERROR_COLOR}All interviews from this dataframe have been conducted. No more unique interviews available.{RESET}")
         return None 
     
-    sample = available_df.sample(n=1).iloc[0].copy()
+    if interview_id is not None:
+        sample = available_df[available_df['id'] == interview_id].iloc[0].copy()
+    else:
+        sample = available_df.sample(n=1).iloc[0].copy()
     sample['info_items_dict'] = ast.literal_eval(sample['info_items_dict'])
     info_items = sample['info_items']
     outline = sample['outlines']
@@ -785,6 +789,7 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", type=str, default="output_results/game_sim/conducted_interviews_advanced", help="Output directory for saving conducted interviews")
     parser.add_argument("--human_eval", action="store_true", help="Conduct human evaluation")
     parser.add_argument("--game_level", type=str, default="advanced", help="Game level for conducting interviews")
+    parser.add_argument("-id", "--interview_id", type=str, default=None, help="Interview ID for human evaluation. If not given, chosen at random")
     args = parser.parse_args()
 
     current_path = os.path.dirname(os.path.abspath(__file__))
@@ -794,7 +799,7 @@ if __name__ == "__main__":
     df = df.head(args.batch_size)
 
     if args.human_eval:
-        human_evaluation = human_eval(args.num_turns, df, model_name=args.model_name, output_dir=args.output_dir)
+        human_evaluation = human_eval(args.num_turns, df, model_name=args.model_name, output_dir=args.output_dir, interview_id=args.interview_id)
         print(human_evaluation)
     else:
         conducted_interviews = conduct_advanced_interviews_batch(

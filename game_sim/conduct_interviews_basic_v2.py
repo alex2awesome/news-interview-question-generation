@@ -116,7 +116,7 @@ def conduct_basic_interviews_batch(num_turns, df, interviewer_strategy="straight
                 ]
             else:
                 specific_info_item_prompts = [
-                    get_source_specific_info_item_prompt(current_conversation, info_item_list)
+                    get_source_specific_info_items_prompt(current_conversation, info_item_list)
                     for current_conversation, info_item_list in zip(current_conversations[start_idx:end_idx], info_items)
                 ]
 

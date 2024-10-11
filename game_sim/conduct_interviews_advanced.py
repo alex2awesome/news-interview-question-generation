@@ -767,7 +767,10 @@ def human_eval(
         'persuasion_levels': [persuasion_levels]
     })
 
-    output_path = os.path.join(output_dir, f"interview_{sample['id']}_human_{role}_vs_LLM.jsonl")
+    if role == "source":
+        output_path = os.path.join(output_dir, f"interview_{sample['id']}_human_{persona}_{role}_vs_LLM_interviewer.jsonl")
+    elif role == "interviewer":
+        output_path = os.path.join(output_dir, f"interview_{sample['id']}_human_{role}_vs_LLM_{persona}_source.jsonl")
     output_df.to_json(output_path, orient='records', lines=True)
     print(f"{PROMPT_COLOR}Interview saved to {output_path}{RESET}")
 

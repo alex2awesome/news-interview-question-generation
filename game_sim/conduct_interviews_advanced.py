@@ -866,6 +866,14 @@ Model Name Selection:
 
 """
 
+"""
+python conduct_interviews_advanced.py \                                       
+    --model_name "gpt-4o" \
+    --batch_size 5 \
+    --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \
+    --output_dir "test" --human_eval
+"""
+
     # simulated_interviews = conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct")
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")
     # for i, interview in enumerate(simulated_interviews['final_conversations']):

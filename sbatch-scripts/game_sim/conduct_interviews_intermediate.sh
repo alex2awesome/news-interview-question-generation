@@ -17,7 +17,7 @@ export OMP_NUM_THREADS=50
 # test run
 python -m game_sim.conduct_interviews_advanced \
     --interviewer_model_name "gpt-4o-mini" \
-    --source_model_name "gpt-4o-mini" \
+    --source_model_name "gpt-4o" \
     --batch_size 5 \
     --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \
     --output_dir "output_results/game_sim/conducted_interviews_advanced/test" \

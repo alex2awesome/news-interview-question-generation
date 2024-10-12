@@ -817,8 +817,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_turns", type=int, default=4, help="Number of turns in the interview")
-    parser.add_argument("--model_name", type=str, default="meta-llama/meta-llama-3.1-70b-instruct", help="Model name")
-    parser.add_argument("--interviewer_model_name", type=str, default="meta-llama/meta-llama-3.1-70b-instruct", help="Interviewer model name")
+    parser.add_argument("--model_name", type=str, default="meta-llama/Meta-Llama-3.1-70B-Instruct", help="Model name")
+    parser.add_argument("--interviewer_model_name", type=str, default="meta-llama/Meta-Llama-3.1-70B-Instruct", help="Interviewer model name")
     parser.add_argument("--source_model_name", type=str, default="gpt-4o", help="Source model name")
     parser.add_argument("--batch_size", type=int, default=50, help="Batch size for conducting interviews")
     parser.add_argument("--dataset_path", type=str, default="output_results/game_sim/outlines/final_df_with_outlines.csv", help="Path to the dataset")
@@ -855,7 +855,16 @@ python conduct_interviews_advanced.py \
     --batch_size 5 \
     --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \
     --output_dir "test" 
-"""        
+"""
+
+"""
+Model Name Selection:
+- 70B: "meta-llama/Meta-Llama-3.1-70B-Instruct"
+- 8B: "meta-llama/meta-llama-3.1-8b-instruct"
+- GPT4o: "gpt-4o"
+- GPT4o mini: "gpt-4o-mini"
+
+"""
 
     # simulated_interviews = conduct_advanced_interviews_batch(num_turns, df, model_name="meta-llama/meta-llama-3.1-70b-instruct")
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")

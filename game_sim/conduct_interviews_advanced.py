@@ -531,7 +531,7 @@ def conduct_advanced_interviews_batch(
         batch_output_df.to_json(batch_file_path, orient='records', lines=True)
         print(f"Batch {start_idx} to {end_idx} saved to {batch_file_path}")
 
-    final_df = stitch_csv_files(output_dir, f'all_{game_level}_interviews_conducted.jsonl')
+    final_df = stitch_csv_files(output_dir, f'all_{game_level}_interviews_conducted_interviewer_{interviewer_model_name}_source{source_model_name}.jsonl')
     return final_df
 
 
@@ -854,9 +854,3 @@ python conduct_interviews_advanced.py \
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")
     # for i, interview in enumerate(simulated_interviews['final_conversations']):
     #     print(f"Interview {i+1}:\n {interview}\n\n\n")
-
-'''
-from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.
-column structure of the database outputted:
-'id' | 'combined_dialogue' | 'info_items' | 'outlines' | 'final_conversations'
-'''

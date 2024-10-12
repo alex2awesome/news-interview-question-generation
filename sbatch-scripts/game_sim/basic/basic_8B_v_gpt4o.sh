@@ -14,12 +14,11 @@ source env_setup.sh
 
 export OMP_NUM_THREADS=50
 
+
 python -m game_sim.conduct_interviews_advanced \
     --num_turns 8 \
-    --interviewer_model_name "gpt-4o-mini" \
-    --source_model_name "gpt-4o-mini" \
+    --interviewer_model_name "meta-llama/meta-llama-3.1-8b-instruct" \
+    --source_model_name "gpt-4o" \
     --batch_size 50 \
     --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \
-    --game_level "advanced"
-
-# NOTE: batch_size is currently set for testing
+    --game_level "basic"

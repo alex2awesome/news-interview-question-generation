@@ -13,6 +13,13 @@ cd /pool001/spangher/alex/news-interview-question-generation
 source env_setup.sh
 
 export OMP_NUM_THREADS=50
-nvidia-smi
 
-python -m game_sim.conduct_basic.70B_vs_70B
+python -m game_sim.conduct_interviews_advanced \
+    --num_turns 8 \
+    --interviewer_model_name "gpt-4o-mini" \
+    --source_model_name "gpt-4o-mini" \
+    --batch_size 50 \
+    --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \
+    --game_level "advanced"
+
+# NOTE: batch_size is currently set for testing

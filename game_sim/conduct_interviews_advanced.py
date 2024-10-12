@@ -190,7 +190,14 @@ def conduct_advanced_interviews_batch(
     game_level="advanced",
     interviewer_strategy="straightforward"
 ):
-    os.makedirs(output_dir, exist_ok=True)
+    sanitized_interviewer_model = interviewer_model_name.replace("/", "_")
+    sanitized_source_model = source_model_name.replace("/", "_")
+    unique_output_dir = os.path.join(
+        output_dir,
+        f"game_level_{game_level}",
+        f"interviewer_{sanitized_interviewer_model}_vs_source_{sanitized_source_model}"
+    )
+    os.makedirs(unique_output_dir, exist_ok=True)
     interviewer_model = load_model(interviewer_model_name)
     if source_model_name == interviewer_model_name:
         source_model = interviewer_model
@@ -527,11 +534,11 @@ def conduct_advanced_interviews_batch(
         })
 
         batch_file_name = f"conducted_interviews_batch_{start_idx}_{end_idx}.jsonl"
-        batch_file_path = os.path.join(output_dir, batch_file_name)
+        batch_file_path = os.path.join(unique_output_dir, batch_file_name)
         batch_output_df.to_json(batch_file_path, orient='records', lines=True)
         print(f"Batch {start_idx} to {end_idx} saved to {batch_file_path}")
 
-    final_df = stitch_csv_files(output_dir, f'all_{game_level}_interviews_conducted.jsonl')
+    final_df = stitch_csv_files(unique_output_dir, f'all_{game_level}_interviews_conducted.jsonl')
     return final_df
 
 
@@ -810,12 +817,12 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_turns", type=int, default=4, help="Number of turns in the interview")
-    parser.add_argument("--model_name", type=str, default="meta-llama/meta-llama-3.1-70b-instruct", help="Model name")
-    parser.add_argument("--interviewer_model_name", type=str, default="meta-llama/meta-llama-3.1-70b-instruct", help="Interviewer model name")
+    parser.add_argument("--model_name", type=str, default="meta-llama/Meta-Llama-3.1-70B-Instruct", help="Model name")
+    parser.add_argument("--interviewer_model_name", type=str, default="meta-llama/Meta-Llama-3.1-70B-Instruct", help="Interviewer model name")
     parser.add_argument("--source_model_name", type=str, default="gpt-4o", help="Source model name")
     parser.add_argument("--batch_size", type=int, default=50, help="Batch size for conducting interviews")
     parser.add_argument("--dataset_path", type=str, default="output_results/game_sim/outlines/final_df_with_outlines.csv", help="Path to the dataset")
-    parser.add_argument("--output_dir", type=str, default="output_results/game_sim/conducted_interviews_advanced", help="Output directory for saving conducted interviews")
+    parser.add_argument("--output_dir", type=str, default="output_results/game_sim/game_level", help="Output directory for saving conducted interviews")
     parser.add_argument("--human_eval", action="store_true", help="Conduct human evaluation")
     parser.add_argument("--game_level", type=str, default="advanced", help="Game level for conducting interviews")
     parser.add_argument("-id", "--interview_id", type=str, default=None, help="Interview ID for human evaluation. If not given, chosen at random")
@@ -848,7 +855,16 @@ python conduct_interviews_advanced.py \
     --batch_size 5 \
     --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \
     --output_dir "test" 
-"""        
+"""
+
+"""
+Model Name Selection:
+- 70B: "meta-llama/Meta-Llama-3.1-70B-Instruct"
+- 8B: "meta-llama/meta-llama-3.1-8b-instruct"
+- GPT4o: "gpt-4o"
+- GPT4o mini: "gpt-4o-mini"
+
+"""
 
 """
 python conduct_interviews_advanced.py \                                       
@@ -862,9 +878,3 @@ python conduct_interviews_advanced.py \
     # print(f"dataset with simulated interviews: {simulated_interviews}\n")
     # for i, interview in enumerate(simulated_interviews['final_conversations']):
     #     print(f"Interview {i+1}:\n {interview}\n\n\n")
-
-'''
-from the dataset of interviews, from each row (interview), plug info_items into source LLM and outlines into interviewer LLM. Then, simulate interview.
-column structure of the database outputted:
-'id' | 'combined_dialogue' | 'info_items' | 'outlines' | 'final_conversations'
-'''

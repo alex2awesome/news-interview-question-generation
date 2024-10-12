@@ -31,9 +31,32 @@ def setup_hf_env():
 
 
 # vllm framework model loader
+# def load_vllm_model(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
+#     global _model
+#     if _model[model_name] is not None:
+#         torch.cuda.empty_cache()
+#         torch.cuda.memory_summary(device=None, abbreviated=False)
+
+#         model = LLM(
+#             model_name,
+#             dtype=torch.float16,
+#             tensor_parallel_size=torch.cuda.device_count(),
+#             enforce_eager=True,
+#             max_model_len=60_000
+#         )
+
+#         memory_allocated = torch.cuda.memory_allocated()
+#         memory_reserved = torch.cuda.memory_reserved()
+        
+#         print(f"Model {model_name} loaded. Memory Allocated: {memory_allocated / (1024 ** 3):.2f} GB")
+#         print(f"Model {model_name} loaded. Memory Reserved: {memory_reserved / (1024 ** 3):.2f} GB")
+#         _model[model_name] = model
+#     return _model[model_name]
+
+
 def load_vllm_model(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
     global _model
-    if _model[model_name] is not None:
+    if _model[model_name] is None:
         torch.cuda.empty_cache()
         torch.cuda.memory_summary(device=None, abbreviated=False)
 
@@ -51,8 +74,9 @@ def load_vllm_model(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
         print(f"Model {model_name} loaded. Memory Allocated: {memory_allocated / (1024 ** 3):.2f} GB")
         print(f"Model {model_name} loaded. Memory Reserved: {memory_reserved / (1024 ** 3):.2f} GB")
         _model[model_name] = model
-    return _model[model_name]
-
+    else:
+        model = _model[model_name]
+    return model
 
 def load_model(model_name):
     """Generic function to either load a VLLM model or a client (e.g. OpenAI)."""

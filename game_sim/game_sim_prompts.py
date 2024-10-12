@@ -260,17 +260,39 @@ PERSUASION_CONSEQUENCES = {
 }
 
 # returns all relevant information items
-def get_source_specific_info_items_prompt(QA_Sequence, info_items):
+def get_source_specific_info_items_prompt(QA_Sequence, info_items, final_question):
+    """
+    Generate a prompt for identifying relevant information items in an interview context.
+
+    This function constructs a prompt for a source being interviewed, providing them with 
+    a sequence of questions and answers from the interview so far, along with a list of 
+    information items. The source is asked to determine which information items, if any, 
+    align with the last question posed by the interviewer.
+
+    Parameters:
+    - QA_Sequence (str): A string representing the sequence of questions and answers 
+      from the interview so far.
+    - info_items (str): A string containing the list of information items available to 
+      the source.
+
+    Returns:
+    - str: A formatted prompt asking the source to identify relevant information items 
+      that answer the last question in the interview conversation.
+    """
     prompt = f'''
     You are a source getting interviewed. You have the following pieces of information:
     
-    {info_items}
+    ```{info_items}```
 
     Here is the interview conversation so far:
 
-    {QA_Sequence}
+    ```{QA_Sequence}```
 
-    Please take a look at the last question from the current conversation. Decide if any of the information items answer this last question posed by the interviewer. If so, return which information items you think align with the question in brackets. 
+    Please take a look at the last question from the current conversation, which I'll repeat here:
+
+    ```{final_question}```
+      
+    Decide if any of the information items answer this last question posed by the interviewer. If so, return which information items you think align with the question in brackets. 
 
     Here are some examples of correct responses:
 
@@ -297,7 +319,7 @@ def get_source_persuasion_level_prompt(current_conversation, persona):
     
     Evaluate the following conversation, especially the last question. Given your {persona} persona, do you overall feel persuaded?
     
-    {current_conversation}
+    ```{current_conversation}```
 
     Your goal is to analyze how persuasive the last question is given your {persona} persona. Think about this step-by-step. Is the interviewer using language that influences someone with your persona?
     After you have evaluated the interviewer's question, assign a score based on the following criteria:
@@ -330,11 +352,12 @@ def get_source_prompt_basic(QA_Sequence, relevant_info_items, persona='straightf
     You are a {persona} source. Respond accordingly, using these speech characteristics:
         {persona_prompt}
 
-    Next, respond to the interviewer's last question. Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer:
-        {relevant_info_items} 
+    Next, respond to the interviewer's last question. Please use the following information as a base, and pair it with your {persona} personality to appropriately craft your response to the interviewer:
+        ```{relevant_info_items}```
     
     Here are some examples:
-        {persona_few_shot_examples}
+        ```{persona_few_shot_examples}```
+
     Now, please analyze and provide your final response to the interview's question formatted in brackets:
     '''
     return prompt
@@ -355,11 +378,12 @@ def get_source_prompt_intermediate(QA_Sequence, relevant_info_items, persona):
     You are a {persona} source. You have the following speech characteristics:
         {persona_prompt}
 
-    Next, respond to the interviewer's last question. Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer:
-        {relevant_info_items} 
+    Next, respond to the interviewer's last question. Please use the following information as a base, and pair it with your {persona} personality to appropriately craft your response to the interviewer:
+        ```{relevant_info_items} ```
     
     Here are some examples:
-        {persona_few_shot_examples}
+        ```{persona_few_shot_examples}```
+
     Now, please analyze and provide your final response to the interview's question formatted in brackets:
     '''
     return prompt
@@ -414,16 +438,16 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
         {persona_prompt}
 
     Next, respond to the interviewer's last question. 
-    Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer. 
-    Additionally, respond as though you’ve been {persuasion_level_description}.
-        {relevant_info_items} 
+    Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer.
+        ```{relevant_info_items}```
     
-    Since you are {persuasion_level_description}, your speech should {persuasion_consequences}.
+    Additionally, respond as though you’ve been {persuasion_level_description}. Since you are {persuasion_level_description}, your speech should {persuasion_consequences}.
 
-    Make sure you're including all of the relevant information items above in your response, just communicated in the appropriate style.
+    Make sure you're including all of the relevant information items above in your response, communicated in the appropriate style.
 
     Here are some examples:
         {persona_few_shot_examples}
+
     Now, please analyze and provide your final response to the interview's question formatted in brackets:
     '''
     return prompt
@@ -438,7 +462,7 @@ def get_source_starting_prompt(QA_Sequence, persona="straightforward"):
     
     Here is the conversation so far:
 
-    {QA_Sequence}
+    ```{QA_Sequence}```
 
     It's the beginning of the interview. Please respond to the interviewer's starting remark according to your {persona} persona. 
     Make sure to write your final response inside brackets. Below are some examples, and your response should follow its format: (e.g., [<response>])
@@ -462,7 +486,7 @@ def get_source_ending_prompt(QA_Sequence, persona="straightforward"):
     
     Here is the conversation so far:
 
-    {QA_Sequence}
+    ```{QA_Sequence}```
 
     It's the end of the interview. Please respond to the interviewer's ending remark appropriately according to your {persona} persona. 
     Make sure to write your final response inside brackets. Below are some examples, and your response should follow its format:
@@ -487,11 +511,11 @@ def get_interviewer_prompt(QA_Sequence, outline_objectives, num_turns_left, stra
     
     Here is the outline of objectives you've prepared before the interview:
 
-    {outline_objectives}
+    ```{outline_objectives}```
 
     Here is the conversation so far. Assess whether your previous question was fully answered and whether you can move on to the next one:
 
-    {QA_Sequence}
+    ```{QA_Sequence}```
 
     Based on the source’s responses, you will now engage in a chain-of-thought reasoning process:
 
@@ -534,11 +558,11 @@ def get_advanced_interviewer_prompt(QA_Sequence, outline_objectives, num_turns_l
 
     Here is the outline of objectives you've prepared before the interview:
 
-    {outline_objectives}
+    ```{outline_objectives}```
 
     Here is the conversation so far. Assess whether your previous question was fully answered and whether you can move on to the next one:
 
-    {QA_Sequence}
+    ```{QA_Sequence}```
 
     Based on the source’s responses, you will now engage in a chain-of-thought reasoning process:
 
@@ -579,7 +603,7 @@ def get_interviewer_starting_prompt(outline_objectives, num_turns_left, strategy
     
     Here is the outline of objectives you've prepared before the interview:
 
-    {outline_objectives}
+    ```{outline_objectives}```
 
     You are about to start the interview. Please kick it off with a starting remark. Be {strategy}
 
@@ -611,11 +635,11 @@ def get_interviewer_ending_prompt(QA_Sequence, outline_objectives, strategy = "s
     
     Here is the outline of objectives you've prepared before the interview:
 
-    {outline_objectives}
+    ```{outline_objectives}```
 
     You are out of time, this will be the last piece of dialogue you can say to the interviewee. Here is the conversation so far:
 
-    {QA_Sequence}
+    ```{QA_Sequence}```
 
     Now, end the interview with an ending remark. Keep your remark {strategy}. Make sure your ending remark is wrapped in brackets. Format: Here is my ending remark: [<your response>]
     
@@ -709,7 +733,7 @@ def get_outline_only_prompt(outline_text):
 
     Here is the outline:
 
-    {outline_text}
+    ```{outline_text}```
 
     Here are some examples:
     

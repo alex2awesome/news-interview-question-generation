@@ -327,8 +327,8 @@ def conduct_advanced_interviews_batch(
             ## Goal: Find which information items from the interviewee are relevant to the question.
             # Generate prompts 
             specific_info_item_prompts = [
-                get_source_specific_info_items_prompt(current_conversation, info_items)
-                for current_conversation, info_items in zip(current_conversations, info_items_list)
+                get_source_specific_info_items_prompt(current_conversation, info_items, final_question)
+                for current_conversation, info_items, final_question in zip(current_conversations, info_items_list, interviewer_questions)
             ]
             
             # Generate responses for the specific information item prompts using the source model
@@ -682,7 +682,8 @@ def human_eval(
             current_conversation += f"\nInterviewer: {interviewer_question}"
             print(f"\n{INTERVIEWER_COLOR}Interviewer (LLM): {interviewer_question}{RESET}\n\n")
 
-            specific_info_item_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
+            specific_info_item_prompt = get_source_specific_info_items_prompt(current_conversation, info_items, interviewer_question)
+            # print(specific_info_item_prompt)
             interviewee_specific_item_responses = generate_SOURCE_response_batch([specific_info_item_prompt], model)
             all_relevant_info_items = extract_text_inside_brackets(interviewee_specific_item_responses[0]) if extract_information_item_numbers(extract_text_inside_brackets(interviewee_specific_item_responses[0])) else "No information items align with the question"
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)  # list of numbers
@@ -718,7 +719,7 @@ def human_eval(
                 
             {get_all_relevant_info_items(info_item_numbers, sample['info_items_dict'])}
 
-            From this list, we suggest you use the following information items (but you can choose others if you'd like):
+            >> From this list, and based on your persuasion level, we suggest you share the following information items (but you can choose others if you'd like):
 
             {sampled_relevant_info_items_str}{RESET}
             '''

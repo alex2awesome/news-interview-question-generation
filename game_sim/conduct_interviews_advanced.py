@@ -329,8 +329,8 @@ def conduct_advanced_interviews_batch(
             ## Goal: Find which information items from the interviewee are relevant to the question.
             # Generate prompts 
             specific_info_item_prompts = [
-                get_source_specific_info_items_prompt(current_conversation, info_items, final_question)
-                for current_conversation, info_items, final_question in zip(current_conversations, info_items_list, interviewer_questions)
+                get_source_specific_info_items_prompt(info_items, final_question)
+                for info_items, final_question in zip(info_items_list, interviewer_questions)
             ]
             
             # Generate responses for the specific information item prompts using the source model
@@ -376,6 +376,7 @@ def conduct_advanced_interviews_batch(
                     previous_persuasion_scores + [persuasion_level_int]
                     for previous_persuasion_scores, persuasion_level_int in zip(previous_persuasion_scores_all_rounds, persuasion_level_ints)
                 ]
+
             else:
                 persuasion_levels = ["3"] * len(current_conversations)
                 persuasion_level_ints = [3] * len(current_conversations)
@@ -667,7 +668,7 @@ def human_eval(
             human_question = input(f"\n\n{INTERVIEWER_COLOR}You have {num_turns_left} questions left. Please ask your next question: {RESET}")
             current_conversation += f"\n(Human) Interviewer: {human_question}"
 
-            specific_info_items_prompt = get_source_specific_info_items_prompt(current_conversation, info_items)
+            specific_info_items_prompt = get_source_specific_info_items_prompt(info_items, human_question)
             specific_info_items_response = generate_SOURCE_response_batch([specific_info_items_prompt], model)
             all_relevant_info_items = extract_text_inside_brackets(specific_info_items_response[0]) or "No information items align with the question"
 
@@ -700,7 +701,7 @@ def human_eval(
             current_conversation += f"\nInterviewer: {interviewer_question}"
             print(f"\n{INTERVIEWER_COLOR}Interviewer (LLM): {interviewer_question}{RESET}\n\n")
 
-            specific_info_item_prompt = get_source_specific_info_items_prompt(current_conversation, info_items, interviewer_question)
+            specific_info_item_prompt = get_source_specific_info_items_prompt(info_items, interviewer_question)
             # print(specific_info_item_prompt)
             interviewee_specific_item_responses = generate_SOURCE_response_batch([specific_info_item_prompt], model)
             all_relevant_info_items = extract_text_inside_brackets(interviewee_specific_item_responses[0]) if extract_information_item_numbers(extract_text_inside_brackets(interviewee_specific_item_responses[0])) else "No information items align with the question"

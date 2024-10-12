@@ -290,7 +290,7 @@ PERSUASION_CONSEQUENCES = {
 }
 
 # returns all relevant information items
-def get_source_specific_info_items_prompt(QA_Sequence, info_items, final_question):
+def get_source_specific_info_items_prompt(info_items, final_question):
     """
     Generate a prompt for identifying relevant information items in an interview context.
 
@@ -314,11 +314,7 @@ def get_source_specific_info_items_prompt(QA_Sequence, info_items, final_questio
     
     ```{info_items}```
 
-    Here is the interview conversation so far:
-
-    ```{QA_Sequence}```
-
-    Please take a look at the last question from the current conversation, which I'll repeat here:
+    Here is the last question from the current conversation, which I'll repeat here:
 
     ```{final_question}```
       

@@ -822,7 +822,7 @@ if __name__ == "__main__":
     parser.add_argument("--source_model_name", type=str, default="gpt-4o", help="Source model name")
     parser.add_argument("--batch_size", type=int, default=50, help="Batch size for conducting interviews")
     parser.add_argument("--dataset_path", type=str, default="output_results/game_sim/outlines/final_df_with_outlines.csv", help="Path to the dataset")
-    parser.add_argument("--output_dir", type=str, default="output_results/game_sim/conducted_interviews_advanced", help="Output directory for saving conducted interviews")
+    parser.add_argument("--output_dir", type=str, default="output_results/game_sim/game_level", help="Output directory for saving conducted interviews")
     parser.add_argument("--human_eval", action="store_true", help="Conduct human evaluation")
     parser.add_argument("--game_level", type=str, default="advanced", help="Game level for conducting interviews")
     parser.add_argument("-id", "--interview_id", type=str, default=None, help="Interview ID for human evaluation. If not given, chosen at random")

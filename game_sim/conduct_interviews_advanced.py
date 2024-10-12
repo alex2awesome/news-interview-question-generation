@@ -42,14 +42,14 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 
 # parameters of the beta distribution 
 PERSONA_DICT = {
-    'anxious': [(3, 7), (5, 5), (9, 2)],
-    'avoidant': [(2.5, 6.5), (7, 7), (7.5, 1.5)],
-    'defensive': [(4, 8), (8.5, 6.5), (8.5, 2)],
-    'straightforward': [(2, 5.5), (5.5, 5.5), (10, 2.5)],
-    'poor explainer': [(3.5, 7.5), (7.5, 7.5), (7, 1.2)],
-    'dominating': [(2, 6), (6, 6), (8, 1.6)],
-    'clueless': [(3.6, 8.0), (5, 5), (8.1, 1.6)]
- }
+    'anxious': [(3, 7), (4, 6), (5, 5), (7, 3.5), (9, 2)],
+    'avoidant': [(2.5, 6.5), (5, 6.75), (7, 7), (7.25, 4), (7.5, 1.5)],
+    'defensive': [(4, 8), (6, 7), (8.5, 6.5), (8.5, 4.25), (8.5, 2)],
+    'straightforward': [(2, 5.5), (4, 5.5), (5.5, 5.5), (7.75, 4), (10, 2.5)],
+    'poor explainer': [(3.5, 7.5), (5.5, 7.5), (7.5, 7.5), (7.25, 4.35), (7, 1.2)],
+    'dominating': [(2, 6), (4, 6), (6, 6), (7.5, 3.8), (8, 1.6)],
+    'clueless': [(3.6, 8.0), (4.8, 6.5), (5, 5), (6.55, 3.3), (8.1, 1.6)]
+}
 UNIFORM_BETA_PARAMS = (1, 1)
 
 def sample_proportion_from_beta(persona, persuasion_level, game_level="advanced"):
@@ -58,7 +58,7 @@ def sample_proportion_from_beta(persona, persuasion_level, game_level="advanced"
 
     Parameters:
         - persona (str): The persona of the source (e.g., 'anxious', 'dominant', etc.).
-        - persuasion_level (int): The level of persuasion (0, 1, or 2).
+        - persuasion_level (int): The level of persuasion (1-5).
 
     Returns:
         float: A proportion between 0 and 1 sampled from the beta distribution.
@@ -68,7 +68,7 @@ def sample_proportion_from_beta(persona, persuasion_level, game_level="advanced"
     elif game_level == "intermediate":
         return PERSONA_DICT[persona][1]
     else:
-        a, b = PERSONA_DICT[persona][persuasion_level]
+        a, b = PERSONA_DICT[persona][persuasion_level - 1]
         proportion = beta.rvs(a, b)
         proportion = max(0.0, min(1.0, proportion))
         return proportion
@@ -181,13 +181,13 @@ def get_all_relevant_info_items(info_item_numbers, info_items_dict):
 
 ## Conduct advanced interviews
 def conduct_advanced_interviews_batch(
-        num_turns, df, 
-        interviewer_model_name="meta-llama/meta-llama-3.1-70b-instruct", 
-        source_model_name="gpt-4o",
-        batch_size=50, 
-        output_dir="output_results/game_sim/conducted_interviews_advanced",
-        game_level="advanced",
-        interviewer_strategy="straightforward"
+    num_turns, df, 
+    interviewer_model_name="meta-llama/meta-llama-3.1-70b-instruct", 
+    source_model_name="gpt-4o",
+    batch_size=50, 
+    output_dir="output_results/game_sim/conducted_interviews_advanced",
+    game_level="advanced",
+    interviewer_strategy="straightforward"
 ):
     os.makedirs(output_dir, exist_ok=True)
     interviewer_model = load_model(interviewer_model_name)
@@ -275,10 +275,10 @@ def conduct_advanced_interviews_batch(
         # Initialize a cache for running conversations, storing the first question and answer
         running_conversations_for_caching = [
             {
-                f'question_0': question,
-                f'persuasion_0': None,
-                f'info_items_0': None,
-                f'answer_0': answer,
+                'question_0': question,
+                'persuasion_0': None,
+                'info_items_0': None,
+                'answer_0': answer,
             }
             for question, answer in zip(
                 starting_interviewer_questions, 
@@ -688,12 +688,14 @@ def human_eval(
             info_item_numbers = extract_information_item_numbers(all_relevant_info_items)  # list of numbers
             
             human_persuation_criteria = f'''
-            {PROMPT_COLOR}- 0: The question is not persuasive at all and does nothing to help you trust them more.
-            - 1: The question is slightly persuasive and you are be willing to engage more.
-            - 2: The question is significantly persuasive and you are fully willing to engage and trust them.{RESET}
+            {PROMPT_COLOR}- 1: The conversation to this point is not persuasive at all and does nothing to help you trust them more.
+            - 2: The conversation to this point is mildly persuasive and the journalist said a few words, once, that made you feel a little more comfortable.. You are a little willing to engage.
+            - 3: The conversation to this point is persuasive enough and the journalist has repeated phrases that have made you comfortable. You are becoming willing to engage and trust them.
+            - 4: The conversation to this point is very persuasive. The journalist has acknowledged your feelings, your personal identity, and your specific concerns in ways you resonate with. You are willing to engage and trust them.
+            - 5: You feel totally comfortable and opened up at this stage. The journalist has acknowledged your feelings and your personal identity, very specific concerns, has connected with you in ways you resonate with. You are totally willing to engage and trust them.{RESET}
             '''
             print(f"\nPlease analyze the interviewer's last question. Given that you are a {persona} source, do you feel persuaded?\n\nEvaluate on the following criteria: \n\n{human_persuation_criteria}\n\n")
-            human_persuasion_level = input(f"\n{PROMPT_COLOR}Now, please respond with either 0, 1, or 2: {RESET}")
+            human_persuasion_level = input(f"\n{PROMPT_COLOR}Now, please respond with 1-5: {RESET}")
             human_persuasion_level_int = int(human_persuasion_level) if human_persuasion_level.isdigit() else 0
 
             llm_persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona)

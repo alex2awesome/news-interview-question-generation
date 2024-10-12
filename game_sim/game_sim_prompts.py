@@ -251,6 +251,14 @@ PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
     '''
 }
 
+PERSUASION_CONSEQUENCES = {
+    0: "be exaggerating the speech-limitations inherent in {persona} people.",
+    1: "be exaggerating the speech-limitations inherent in {persona} people.",
+    2: "be starting to de-emphasize some of the speech-limitations in {persona} people.",
+    3: "be almost normal, with only a few of the speech-limitations inherent in {persona} people.",
+    4: "be completely normal and straightforward, without any of the speech-limitations inherent in {persona} people."
+}
+
 # returns all relevant information items
 def get_source_specific_info_items_prompt(QA_Sequence, info_items):
     prompt = f'''
@@ -294,9 +302,11 @@ def get_source_persuasion_level_prompt(current_conversation, persona):
     Your goal is to analyze how persuasive the last question is given your {persona} persona. Think about this step-by-step. Is the interviewer using language that influences someone with your persona?
     After you have evaluated the interviewer's question, assign a score based on the following criteria:
 
-    - 0: The question is not persuasive at all and does nothing to help you trust them more.
-    - 1: The question is somewhat persuasive and you are a little willing to engage.
-    - 2: The question is persuasive enough and you are willing to engage and trust them.
+    - 1: The conversation to this point is not persuasive at all and does nothing to help you trust them more.
+    - 2: The conversation to this point is mildly persuasive and the journalist said a few words, once, that made you feel a little more comfortable.. You are a little willing to engage.
+    - 3: The conversation to this point is persuasive enough and the journalist has repeated phrases that have made you comfortable. You are becoming willing to engage and trust them.
+    - 4: The conversation to this point is very persuasive. The journalist has acknowledged your feelings, your personal identity, and your specific concerns in ways you resonate with. You are willing to engage and trust them.
+    - 5: You feel totally comfortable and opened up at this stage. The journalist has acknowledged your feelings and your personal identity, very specific concerns, has connected with you in ways you resonate with. You are totally willing to engage and trust them.
 
     After thinking things through, please provide your final answer enclosed in square brackets with just the number (e.g., [1]).
 
@@ -369,7 +379,9 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
     - persuasion_level (int): A score indicating the level of persuasion of the source, where:
         0 = not persuaded at all,
         1 = mildly persuaded,
-        2 = persuaded.
+        2 = somewhat persuaded,
+        3 = very persuaded,
+        4 = totally persuaded and comfortable.
 
     Returns:
     - str: A formatted prompt for the source to use in crafting their response.
@@ -385,11 +397,14 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
     persona_score_map = {
         0: "not persuaded at all",
         1: "mildly persuaded",
-        2: "persuaded"
+        2: "somewhat persuaded",
+        3: "very persuaded",
+        4: "totally persuaded and comfortable"
     }
 
     persuasion_level_description = persona_score_map.get(persuasion_level)
 
+    persuasion_consequences = PERSUASION_CONSEQUENCES.get(persuasion_level).format(persona=persona)
     prompt = f'''
     You are a source getting interviewed. Here is the conversation so far:
 
@@ -398,10 +413,13 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
     You are a {persona} source. You have the following speech characteristics:
         {persona_prompt}
 
-    Next, respond to the interviewer's last question. Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer. 
+    Next, respond to the interviewer's last question. 
+    Please use the following information as a base, and pair it with your {persona} personality to appropriately craft and influence your response to the interviewer. 
     Additionally, respond as though you’ve been {persuasion_level_description}.
         {relevant_info_items} 
     
+    Since you are {persuasion_level_description}, your speech should {persuasion_consequences}.
+
     Make sure you're including all of the relevant information items above in your response, just communicated in the appropriate style.
 
     Here are some examples:

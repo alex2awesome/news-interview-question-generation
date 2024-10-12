@@ -67,7 +67,7 @@ def sample_proportion_from_beta(persona, persuasion_level, game_level="advanced"
     if game_level == "basic":
         return 1 
     elif game_level == "intermediate":
-        return PERSONA_DICT[persona][1]
+        return beta.rvs(UNIFORM_BETA_PARAMS[0], UNIFORM_BETA_PARAMS[1])
     else:
         a, b = PERSONA_DICT[persona][persuasion_level - 1]
         proportion = beta.rvs(a, b)

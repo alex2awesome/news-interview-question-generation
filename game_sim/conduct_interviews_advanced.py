@@ -221,6 +221,7 @@ def conduct_advanced_interviews_batch(
         info_items_list = batch_df['info_items']
         outlines = batch_df['outlines']
         current_conversations = [""] * (end_idx - start_idx)
+        previous_persuasion_scores_all_rounds = [[]] * (end_idx - start_idx)
 
         unique_info_items_sets = [set() for _ in range(end_idx - start_idx)]
         total_info_item_counts[start_idx:end_idx] = [count_information_items(info_items) for info_items in info_items_list]
@@ -288,7 +289,6 @@ def conduct_advanced_interviews_batch(
             )
         ]
 
-
         #### 2. Handle the middle questions/answers within the loop
         for turn in tqdm(range(num_turns - 1), desc="Conducting interviews", total=num_turns - 1):
             # The following code block handles the middle questions and answers in the interview loop.
@@ -351,8 +351,8 @@ def conduct_advanced_interviews_batch(
                 ## Goal: Find level of persuasion from the interviewee based on the current conversation and persona.
                 # Generate prompts
                 persuasion_level_prompts = [
-                    get_source_persuasion_level_prompt(current_conversation, persona)
-                    for current_conversation, persona in zip(current_conversations, personas)
+                    get_source_persuasion_level_prompt(current_conversation, persona, previous_persuasion_scores)
+                    for current_conversation, persona, previous_persuasion_scores in zip(current_conversations, personas, previous_persuasion_scores_all_rounds)
                 ]
                 
                 # Generate responses
@@ -369,6 +369,12 @@ def conduct_advanced_interviews_batch(
                     int(persuasion_level) 
                     if persuasion_level.isdigit() else 0 
                     for persuasion_level in persuasion_levels
+                ]
+
+                # Update the previous persuasion scores for the next turn
+                previous_persuasion_scores_all_rounds = [
+                    previous_persuasion_scores + [persuasion_level_int]
+                    for previous_persuasion_scores, persuasion_level_int in zip(previous_persuasion_scores_all_rounds, persuasion_level_ints)
                 ]
             else:
                 persuasion_levels = ["3"] * len(current_conversations)
@@ -665,7 +671,7 @@ def human_eval(
             specific_info_items_response = generate_SOURCE_response_batch([specific_info_items_prompt], model)
             all_relevant_info_items = extract_text_inside_brackets(specific_info_items_response[0]) or "No information items align with the question"
 
-            persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona)
+            persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona, persuasion_levels)
             persuasion_level_response = generate_SOURCE_response_batch([persuasion_level_prompt], model)
             persuasion_level = extract_text_inside_brackets(persuasion_level_response[0]) or "0"
 
@@ -711,7 +717,11 @@ def human_eval(
             human_persuasion_level = input(f"\n{PROMPT_COLOR}Now, please respond with 1-5: {RESET}")
             human_persuasion_level_int = int(human_persuasion_level) if human_persuasion_level.isdigit() else 0
 
-            llm_persuasion_level_prompt = get_source_persuasion_level_prompt(current_conversation, persona)
+            llm_persuasion_level_prompt = get_source_persuasion_level_prompt(
+                current_conversation, 
+                persona, 
+                list(map(lambda x: x[1][1], persuasion_levels))
+            )
             llm_persuasion_level_response = generate_SOURCE_response_batch([llm_persuasion_level_prompt], model)
             llm_persuasion_level = extract_text_inside_brackets(llm_persuasion_level_response[0]) or "0"
             llm_persuasion_level_int = int(llm_persuasion_level) if llm_persuasion_level.isdigit() else 0

@@ -339,10 +339,43 @@ def get_source_specific_info_items_prompt(QA_Sequence, info_items, final_questio
     return prompt
 
 # returns 0, 1, or 2
-def get_source_persuasion_level_prompt(current_conversation, persona):
+def get_source_persuasion_level_prompt(current_conversation, persona, previous_persona_scores):
+    """
+    Generate a prompt for assessing the persuasion level of a source in an interview context.
+
+    This function constructs a prompt for a source being interviewed, providing them with 
+    the current conversation and their persona type. The source is asked to evaluate how 
+    persuasive the conversation has been, especially focusing on the last question posed 
+    by the interviewer. The source should consider their persona's characteristics and 
+    previous persuasion scores to determine their current level of persuasion.
+
+    Parameters:
+    - current_conversation (str): A string representing the conversation so far, including 
+      the last question from the interviewer.
+    - persona (str): The persona type of the source, which influences how they perceive 
+      the persuasiveness of the conversation.
+    - previous_persona_scores (list): A list of previous persuasion scores that the source 
+      has experienced throughout the conversation.
+
+    Returns:
+    - str: A formatted prompt asking the source to evaluate their level of persuasion and 
+      provide a score based on predefined criteria.
+    """
+
     if persona.lower() in PERSUASION_PERSONA_PROMPTS:
         persuation_prompt = PERSUASION_PERSONA_PROMPTS.get(persona.lower())
     
+    # if there are previous scores, include them in the prompt:
+    if len(previous_persona_scores) > 0:
+        previous_persuasion_scores_if_any = f"""
+        Keep in mind, you have previously felt these levels of persuasion throughout the conversation. 
+        Please consider your previous scores and how they have influenced your current score:
+
+        - Previous persuasion scores: {','.join(list(map(str, previous_persona_scores)))}
+        """
+    else:
+        previous_persuasion_scores_if_any = ""    
+
     prompt = f'''
     You are a {persona} source.
     {persuation_prompt}
@@ -351,7 +384,8 @@ def get_source_persuasion_level_prompt(current_conversation, persona):
     
     ```{current_conversation}```
 
-    Your goal is to analyze how persuasive the last question is given your {persona} persona. Think about this step-by-step. Is the interviewer using language that influences someone with your persona?
+    Your goal is to analyze how persuaded you have been, given your {persona} persona. Think about this step-by-step. 
+    Is the interviewer using language that influences someone with your persona?
     After you have evaluated the interviewer's question, assign a score based on the following criteria:
 
     - 1: The conversation to this point is not persuasive at all and does nothing to help you trust them more.
@@ -360,6 +394,7 @@ def get_source_persuasion_level_prompt(current_conversation, persona):
     - 4: The conversation to this point is very persuasive. The journalist has acknowledged your feelings, your personal identity, and your specific concerns in ways you resonate with. You are willing to engage and trust them.
     - 5: You feel totally comfortable and opened up at this stage. The journalist has acknowledged your feelings and your personal identity, very specific concerns, has connected with you in ways you resonate with. You are totally willing to engage and trust them.
 
+    {previous_persuasion_scores_if_any}
     After thinking things through, please provide your final answer enclosed in square brackets with just the number (e.g., [1]).
 
     Now, please analyze and provide your response formatted in brackets:

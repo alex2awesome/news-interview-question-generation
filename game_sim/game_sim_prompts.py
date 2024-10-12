@@ -9,7 +9,9 @@ PERSONA_PROMPTS = {
     "avoidant": '''
         You give brief, deflecting, non-committal answers. You avoid going into too much detail and may dodge direct questions by speaking generally or changing the subject. 
     ''',
-    
+    "adversarial": '''
+        You respond with hostility and resistance. You challenge the interviewer's questions, often turning them back on the interviewer. You may provide confrontational or sarcastic replies, dispute the premises of questions, or refuse to answer altogether. You might attempt to derail the conversation or undermine the interviewer's credibility.
+    ''',
     "defensive": '''
         You are feeling defensive and protective of your reputation. You may feel like the interviewer is questioning your abilities or decisions, so you justify your responses. You might provide detailed explanations to defend yourself against perceived criticism.
     ''',
@@ -45,7 +47,15 @@ PERSUASION_PERSONA_PROMPTS = {
            - "I imagine there's more to the story."
            - "Ah I see."
     ''',
-    
+    "adversarial": '''
+        You tend to respond when the interviewer shows they are well-prepared and knowledgeable about the subject matter. Demonstrating thorough research and citing specific facts can compel you to engage more seriously. Repeating questions can prompt you to address them directly, especially when it's clear that avoidance isn't deflecting the inquiry. Strategies that might help persuade you include:
+        - "Earlier, you stated that..., could you elaborate on that?"
+        - "Our records indicate..., can you confirm or clarify this?"
+        - "According to [specific document or source], it seems that..., what's your perspective on this?"
+        - "Just to be clear, are you saying that...?"
+        - "I understand this topic is complex, but it's important to get accurate information."
+        By showcasing diligent preparation and persistence, the interviewer can encourage you to provide more substantive responses.
+    ''',
     "defensive": '''
         You tend to respond well to empathetic, non-confrontational, collaborative, and validating conversations. It’s important to reduce the sense of threat by using neutral language, acknowledging your feelings, and avoiding blame. Encouraging a collaborative approach and giving space to think helps ease defensiveness. For example, the following might help you feel persuaded:
            - "I see why you made that choice; it makes sense."
@@ -106,14 +116,21 @@ PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
         Avoidant Source's response: 
         [Actually, one of the main issues was the supply chain, but we've sorted that out.]
     ''',
-
+    "adversarial": '''
+        Here is an example, your response should follow its format:
+        
+        **Adversarial Persona Example**:
+        Interviewer's question: "Can you explain more about the delays in the project?"
+        Adversarial Source's response: 
+        [Maybe if you did your job properly, you'd understand the data. I'm not here to educate you. There have been no delays in the project, it's been perfectly conducted.]
+    ''',    
     "defensive": '''
         Here is an example, your response should follow its format:
         
         **Defensive Persona Example**:
         Interviewer's question: "Why did the project go over budget?"
         Defensive Source's response: 
-        [That said, one area where costs increased was in material prices, which were out of our control.]
+        [One area where costs increased was in material prices, which were out of our control.]
     ''',
 
     "poor explainer": '''
@@ -173,7 +190,20 @@ PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
         Example 3: Mildly Persuaded
         - [OK. I think I can say some of these things. Look, the delays were due to a combination of factors, including communication breakdowns and resource shortages. But that's off the record, you'll have to check with the team for more details.]
     ''',
-    
+    "adversarial": '''
+        Your response should follow this format:
+
+        Interviewer's question: "Can you explain more about the delays in the project?"
+
+        Example 1: Not Persuaded
+        - [Maybe if you did your job properly, you'd understand the data. I'm not here to educate you. There have been no delays in the project, it's been perfectly conducted.]
+
+        Example 2: Persuaded
+        - [Look, sigh. There's a point here, I can tell you that the delays were due to a combination of factors, including supply chain issues and internal miscommunications.]
+
+        Example 3: Mildly Persuaded
+        - [I'm not sure what you're looking for, but I can tell you that the delays were due to a combination of factors. Now go spin that.]
+    ''',   
 
     "avoidant": '''
         Your response should follow this format:
@@ -528,6 +558,7 @@ def get_interviewer_prompt(QA_Sequence, outline_objectives, num_turns_left, stra
         - Based on the detected persona, decide how to proceed with your questioning.
         - If the source seems “anxious,” consider using a reassuring tone to calm them down and encourage more open responses. You might want to reassure them that they are doing well and won't get in trouble.
         - If the source seems “avoidant,” consider using shorter, brief answers and leaving lots of space to encourage more voluntary sharing of details. You might give them space to reflect.
+        - If the source seems "adversarial," consider using a more assertive and direct approach to challenge their responses and encourage more substantive answers. You might need to repeat questions or provide specific examples to prompt engagement.
         - If the source seems “defensive,” use empathetic, non-confrontational language. Acknowledge their feelings, reduce any perceived threat, and encourage a collaborative tone to ease defensiveness.
         - If the source seems “straightforward,” ask more direct, clear, and solution-oriented questions. You can challenge them to go deeper or provide additional details since they tend to appreciate transparency and brevity.
         - If the source seems to be a “poor explainer,” try using structured, clarifying questions and guide the conversation with simple prompts. Break complex topics down into manageable parts and provide validation to help them articulate their thoughts better.
@@ -575,6 +606,7 @@ def get_advanced_interviewer_prompt(QA_Sequence, outline_objectives, num_turns_l
         - Based on the detected persona, decide how to proceed with your questioning.
         - If the source seems “anxious,” consider using a reassuring tone to calm them down and encourage more open responses.
         - If the source seems “avoidant,” consider using a non-judgmental, patient, and open-ended question to encourage more voluntary sharing of details. You might give them space to reflect and emphasize autonomy.
+        - If the source seems "adversarial," consider using a more assertive and direct approach to challenge their responses and encourage more substantive answers. You might need to repeat questions or provide specific examples to prompt engagement.
         - If the source seems “defensive,” use empathetic, non-confrontational language. Acknowledge their feelings, reduce any perceived threat, and encourage a collaborative tone to ease defensiveness.
         - If the source seems “straightforward,” ask more direct, clear, and solution-oriented questions. You can challenge them to go deeper or provide additional details since they tend to appreciate transparency and brevity.
         - If the source seems to be a “poor explainer,” try using structured, clarifying questions and guide the conversation with simple prompts. Break complex topics down into manageable parts and provide validation to help them articulate their thoughts better.

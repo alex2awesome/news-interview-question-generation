@@ -44,6 +44,7 @@ os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 PERSONA_DICT = {
     'anxious': [(3, 7), (4, 6), (5, 5), (7, 3.5), (9, 2)],
     'avoidant': [(2.5, 6.5), (5, 6.75), (7, 7), (7.25, 4), (7.5, 1.5)],
+    'adversarial': [(1, 9), (2, 8.5), (4, 8), (8, 7.5), (9, 7)],
     'defensive': [(4, 8), (6, 7), (8.5, 6.5), (8.5, 4.25), (8.5, 2)],
     'straightforward': [(2, 5.5), (4, 5.5), (5.5, 5.5), (7.75, 4), (10, 2.5)],
     'poor explainer': [(3.5, 7.5), (5.5, 7.5), (7.5, 7.5), (7.25, 4.35), (7, 1.2)],
@@ -206,6 +207,7 @@ def conduct_advanced_interviews_batch(
     persona_types = [
         "anxious",
         "avoidant",
+        "adversarial",
         "defensive", 
         "straightforward", 
         "poor explainer", 
@@ -547,7 +549,16 @@ def human_eval(
     role = "interviewer" if role == "A" else "source"
     print(f"\n{PROMPT_COLOR}You've chosen to play as the {role}.{RESET}\n")
 
-    persona_types = ["anxious", "avoidant", "defensive", "straightforward", "poor explainer", "dominating", "clueless"]
+    persona_types = [
+        "anxious",
+        "avoidant",
+        "adversarial",
+        "defensive", 
+        "straightforward", 
+        "poor explainer", 
+        "dominating", 
+        "clueless"
+    ]
     if role == 'interviewer':
         print(f"{PROMPT_COLOR}Please choose a source persona to play against.{RESET}")
     else:

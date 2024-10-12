@@ -369,7 +369,8 @@ def conduct_advanced_interviews_batch(
                     for persuasion_level in persuasion_levels
                 ]
             else:
-                persuasion_level_ints = [1] * len(current_conversations)
+                persuasion_levels = ["3"] * len(current_conversations)
+                persuasion_level_ints = [3] * len(current_conversations)
 
             # Filter the specific_info_items to the ones we haven't used yet
             info_items_to_use = [

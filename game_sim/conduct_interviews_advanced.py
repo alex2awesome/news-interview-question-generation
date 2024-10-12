@@ -190,7 +190,14 @@ def conduct_advanced_interviews_batch(
     game_level="advanced",
     interviewer_strategy="straightforward"
 ):
-    os.makedirs(output_dir, exist_ok=True)
+    sanitized_interviewer_model = interviewer_model_name.replace("/", "_")
+    sanitized_source_model = source_model_name.replace("/", "_")
+    unique_output_dir = os.path.join(
+        output_dir,
+        f"game_level_{game_level}",
+        f"interviewer_{sanitized_interviewer_model}_vs_source_{sanitized_source_model}"
+    )
+    os.makedirs(unique_output_dir, exist_ok=True)
     interviewer_model = load_model(interviewer_model_name)
     if source_model_name == interviewer_model_name:
         source_model = interviewer_model
@@ -527,11 +534,11 @@ def conduct_advanced_interviews_batch(
         })
 
         batch_file_name = f"conducted_interviews_batch_{start_idx}_{end_idx}.jsonl"
-        batch_file_path = os.path.join(output_dir, batch_file_name)
+        batch_file_path = os.path.join(unique_output_dir, batch_file_name)
         batch_output_df.to_json(batch_file_path, orient='records', lines=True)
         print(f"Batch {start_idx} to {end_idx} saved to {batch_file_path}")
 
-    final_df = stitch_csv_files(output_dir, f'all_{game_level}_interviews_conducted_interviewer_{interviewer_model_name}_source{source_model_name}.jsonl')
+    final_df = stitch_csv_files(unique_output_dir, f'all_{game_level}_interviews_conducted.jsonl')
     return final_df
 
 

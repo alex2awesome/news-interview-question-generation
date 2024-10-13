@@ -213,7 +213,7 @@ def conduct_advanced_interviews_batch(
     if source_model_name == interviewer_model_name:
         source_model = interviewer_model
     else:
-        assert source_model_name == "gpt-4o", "Only GPT-4o is supported as the source model, if it's different from the interviewer model."
+        assert source_model_name in ["gpt-4o", "gpt-4o-mini"], "Only GPT-4o is supported as the source model, if it's different from the interviewer model."
         source_model = load_model(source_model_name)
 
     num_samples = len(df)

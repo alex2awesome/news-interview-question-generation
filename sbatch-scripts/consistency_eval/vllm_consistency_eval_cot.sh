@@ -11,7 +11,7 @@
 
 cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 
-source /home/spangher/.bashrc
+source /home1/spangher/.bashrc
 conda activate vllm-retriv-py39
 
 

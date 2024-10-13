@@ -9,8 +9,8 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=michael.lu@berkeley.edu
 
-source /home/spangher/.bashrc
-conda activate alex
+cd /pool001/spangher/alex/news-interview-question-generation
+source env_setup.sh
 
 export OMP_NUM_THREADS=50
 

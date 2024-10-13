@@ -863,7 +863,7 @@ if __name__ == "__main__":
 
 """
 python conduct_interviews_advanced.py \
-    --interviewer_model_name "meta-llama/meta-llama-3.1-8b-instruct" \
+    --interviewer_model_name "meta-llama/meta-llama-3.1-70b-instruct" \
     --source_model_name "gpt-4o-mini" \
     --batch_size 5 \
     --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \

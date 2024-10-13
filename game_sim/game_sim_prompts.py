@@ -282,11 +282,11 @@ PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES = {
 }
 
 PERSUASION_CONSEQUENCES = {
-    0: "be exaggerating the speech-limitations inherent in {persona} people.",
     1: "be exaggerating the speech-limitations inherent in {persona} people.",
-    2: "be starting to de-emphasize some of the speech-limitations in {persona} people.",
-    3: "be almost normal, with only a few of the speech-limitations inherent in {persona} people.",
-    4: "be completely normal and straightforward, without any of the speech-limitations inherent in {persona} people."
+    2: "be exaggerating the speech-limitations inherent in {persona} people.",
+    3: "be starting to de-emphasize some of the speech-limitations in {persona} people.",
+    4: "be almost normal, with only a few of the speech-limitations inherent in {persona} people.",
+    5: "be completely normal and straightforward, without any of the speech-limitations inherent in {persona} people."
 }
 
 # returns all relevant information items
@@ -462,11 +462,11 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
     - relevant_info_items (str): Information items that the source should use in their response.
     - persona (str): The persona type of the source, which influences their speech characteristics.
     - persuasion_level (int): A score indicating the level of persuasion of the source, where:
-        0 = not persuaded at all,
-        1 = mildly persuaded,
-        2 = somewhat persuaded,
-        3 = very persuaded,
-        4 = totally persuaded and comfortable.
+        1 = not persuaded at all,
+        2 = mildly persuaded,
+        3 = somewhat persuaded,
+        4 = very persuaded,
+        5 = totally persuaded and comfortable.
 
     Returns:
     - str: A formatted prompt for the source to use in crafting their response.
@@ -480,11 +480,11 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
         persona_few_shot_examples = PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get('straightforward')
     
     persona_score_map = {
-        0: "not persuaded at all",
-        1: "mildly persuaded",
-        2: "somewhat persuaded",
-        3: "very persuaded",
-        4: "totally persuaded and comfortable"
+        1: "not persuaded at all",
+        2: "mildly persuaded",
+        3: "somewhat persuaded",
+        4: "very persuaded",
+        5: "totally persuaded and comfortable"
     }
 
     persuasion_level_description = persona_score_map.get(persuasion_level)

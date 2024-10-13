@@ -831,7 +831,8 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", type=str, default="meta-llama/Meta-Llama-3.1-70B-Instruct", help="Model name")
     parser.add_argument("--interviewer_model_name", type=str, default="meta-llama/Meta-Llama-3.1-70B-Instruct", help="Interviewer model name")
     parser.add_argument("--source_model_name", type=str, default="gpt-4o", help="Source model name")
-    parser.add_argument("--batch_size", type=int, default=50, help="Batch size for conducting interviews")
+    parser.add_argument("--debug", action="store_true", help="Debug mode")
+    parser.add_argument("--batch_size", type=int, default=None, help="Batch size for conducting interviews")
     parser.add_argument("--dataset_path", type=str, default="output_results/game_sim/outlines/final_df_with_outlines.csv", help="Path to the dataset")
     parser.add_argument("--output_dir", type=str, default="output_results/game_sim/game_level", help="Output directory for saving conducted interviews")
     parser.add_argument("--human_eval", action="store_true", help="Conduct human evaluation")
@@ -843,7 +844,8 @@ if __name__ == "__main__":
     project_root = find_project_root(current_path, 'news-interview-question-generation')
     dataset_path = os.path.join(project_root, args.dataset_path)
     df = pd.read_csv(dataset_path)
-    df = df.head(args.batch_size)
+    if args.debug:
+        df = df.head(5)
 
     if args.human_eval:
         human_evaluation = human_eval(args.num_turns, df, model_name=args.model_name, output_dir=args.output_dir, interview_id=args.interview_id)

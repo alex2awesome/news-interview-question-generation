@@ -487,9 +487,9 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
         5: "totally persuaded and comfortable"
     }
 
-    persuasion_level_description = persona_score_map.get(persuasion_level)
+    persuasion_level_description = persona_score_map[persuasion_level]
 
-    persuasion_consequences = PERSUASION_CONSEQUENCES.get(persuasion_level).format(persona=persona)
+    persuasion_consequences = PERSUASION_CONSEQUENCES[persuasion_level].format(persona=persona)
     prompt = f'''
     You are a source getting interviewed. Here is the conversation so far:
 

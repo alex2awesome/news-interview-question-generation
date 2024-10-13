@@ -78,6 +78,7 @@ def load_vllm_model(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
         model = _model[model_name]
     return model
 
+
 def load_model(model_name):
     """Generic function to either load a VLLM model or a client (e.g. OpenAI)."""
     if "gpt" in model_name:

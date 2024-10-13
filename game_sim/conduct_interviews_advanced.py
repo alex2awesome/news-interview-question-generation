@@ -180,6 +180,17 @@ def get_all_relevant_info_items(info_item_numbers, info_items_dict):
     return "\n".join(all_items) if all_items else "No information items align with the question"
 
 
+
+def robust_load(x):
+    try:
+        return json.loads(x)
+    except:
+        try:
+            return ast.literal_eval(x)
+        except:
+            raise ValueError(f"Could not load {x}")
+    
+
 ## Conduct advanced interviews
 def conduct_advanced_interviews_batch(
     num_turns, df, 
@@ -209,7 +220,7 @@ def conduct_advanced_interviews_batch(
     unique_info_item_counts = [0] * num_samples
     total_info_item_counts = [0] * num_samples
     used_info_items = [set() for _ in range(num_samples)]
-    df['info_items_dict'] = df['info_items_dict'].apply(json.loads)
+    df['info_items_dict'] = df['info_items_dict'].apply(robust_load)
 
     persona_types = [
         "anxious",
@@ -850,7 +861,7 @@ if __name__ == "__main__":
 
 """
 python conduct_interviews_advanced.py \
-    --interviewer_model_name "gpt-4o-mini" \
+    --interviewer_model_name "meta-llama/meta-llama-3.1-8b-instruct" \
     --source_model_name "gpt-4o-mini" \
     --batch_size 5 \
     --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \

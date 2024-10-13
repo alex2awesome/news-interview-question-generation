@@ -479,6 +479,7 @@ def get_source_persona_prompt_advanced(QA_Sequence, relevant_info_items, persona
         persona_prompt = PERSONA_PROMPTS.get('straightforward')
         persona_few_shot_examples = PERSUASION_PERSONA_SPECIFIC_FEW_SHOT_EXAMPLES.get('straightforward')
     
+    persuasion_level = int(persuasion_level)
     persona_score_map = {
         1: "not persuaded at all",
         2: "mildly persuaded",

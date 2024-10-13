@@ -17,5 +17,7 @@ conda activate vllm-retriv-py39
 
 python -m evaluators.vllm_consistency_eval \
     --dataset_path /project/jonmay_1426/spangher/news-interview-question-generation/output_results/CoT/QA_Seq_LLM_generated.csv \
-    --output_dir /project/jonmay_1426/spangher/news-interview-question-generation/output_results/consistency_eval_cot
+    --output_dir /project/jonmay_1426/spangher/news-interview-question-generation/output_results/consistency_eval_cot \
+    --verbose \
+    --eval_type "multidimensional"
 

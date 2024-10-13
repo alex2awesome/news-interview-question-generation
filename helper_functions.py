@@ -9,6 +9,8 @@ import json
 import os
 import torch
 import pandas as pd
+import ast
+from tqdm.auto import tqdm
 import torch.distributed as dist
 from collections import defaultdict
 
@@ -117,13 +119,13 @@ def query_openai(message, model=None):
     return completion.choices[0].message.content
 
 
-def openai_infer_batch(messages_batch, model):
-    return [query_openai(messages, model=model) for messages in messages_batch]
+def openai_infer_batch(messages_batch, model, verbose=False):
+    return [query_openai(messages, model=model) for messages in tqdm(messages_batch, desc="OpenAI Inference", disable=not verbose)]
 
 
-def infer_batch(messages_batch, model):
+def infer_batch(messages_batch, model, verbose=False):
     if isinstance(model, OpenAI):
-        return openai_infer_batch(messages_batch, model)
+        return openai_infer_batch(messages_batch, model, verbose)
     else:
         return vllm_infer_batch(messages_batch, model)
 
@@ -330,6 +332,29 @@ def extract_text_inside_brackets(text):
     if match:
         return match.group(1)
     return ""
+
+
+def parse_python_dict(text):
+    """
+    Parses a Python dictionary from a string.
+
+    Parameters:
+    - text (str): The string containing the dictionary.
+
+    Returns:
+    - dict: The parsed dictionary if found, otherwise None.
+    """
+    match = re.search(r'\{.*:.*\}', text, re.DOTALL)
+    if match:
+        dict_str = match.group(0)
+        try:
+            return ast.literal_eval(dict_str)
+        except (SyntaxError, NameError):
+            return {}
+    else:
+        print(f"Error: No dictionary found in text: {text}")
+        return {}   
+
 
 # given "ABC{XYZ}EFG", return "XYZ"
 def extract_text_inside_parentheses(text):

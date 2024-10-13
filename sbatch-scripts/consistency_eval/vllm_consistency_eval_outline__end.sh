@@ -15,5 +15,7 @@ source /home1/spangher/.bashrc
 conda activate vllm-retriv-py39
 
 python -m evaluators.vllm_consistency_eval \
-    --dataset_path /project/jonmay_1426/spangher/news-interview-question-generation/output_results/baseline/QA_Seq_LLM_generated.csv \
-    --output_dir /project/jonmay_1426/spangher/news-interview-question-generation/output_results/consistency_eval_baseline
+    --dataset_path /project/jonmay_1426/spangher/news-interview-question-generation/output_results/outline/QA_Seq_LLM_generated.csv \
+    --output_dir /project/jonmay_1426/spangher/news-interview-question-generation/output_results/consistency_eval_outline \
+    --verbose \
+    --eval_type "multidimensional"

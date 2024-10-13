@@ -237,35 +237,68 @@ def get_classify_all_questions_taxonomy_prompt(transcript, question):
       '''
       return prompt
 
-# this prompt instructs LLM to evaluate two different questions based on dimensions of similarity
 def get_consistency_eval_prompt(transcript_context, LLM_question, human_question, LLM_question_type, Actual_question_type):
       prompt = f'''
+        Dimensions of Similarity:
+            1. Informational: Do the questions target the same specific information or facts?
+            2. Motivational: Do the questions have the same motivation or underlying purpose?
+            3. Contextual: Are both questions equally appropriate for the specific context provided?
+            4. Stylistic: Do the questions have similar styles in terms of tone, complexity, and structure?
+
+            Given these dimensions of similarity as well as the following information below, please evaluate whether the two questions below are similar or not. They are either similar or they aren't. The two questions are two possible continuation questions an interviewer can ask given the current interview so far.
+
+            Transcript context: {transcript_context}
+
+            Question 1: {LLM_question}
+            Question 1 Type Classification: {LLM_question_type}
+
+            Question 2: {human_question}
+            Question 2 Type Classification: {Actual_question_type}
+
+            Please take things step by step. The format of your response should be in this sequence:
+            1. First, explain your thought process for each dimension. 
+            2. Then, answer the following question: In the context of this interview, are the two questions provided more similar or different? 
+            
+            Please format your final answer as either similar or different with brackets: [similar] or [different]
+            Make sure that only your final answer has brackets.
+        '''
+      return prompt
+
+
+# this prompt instructs LLM to evaluate two different questions based on dimensions of similarity
+def get_consistency_eval_prompt_multidimensional(transcript_context, LLM_question, human_question, LLM_question_type, Actual_question_type):
+      prompt = f'''
+      Your task is to evaluate the similarity between two potential follow-up questions based on the following dimensions of similarity:
+
       Dimensions of Similarity:
-      1. Informational: Do the questions target the same specific information or facts?
-      2. Motivational: Do the questions have the same motivation or underlying purpose?
-      3. Contextual: Are both questions equally appropriate for the specific context provided?
-      4. Stylistic: Do the questions have similar styles in terms of tone, complexity, and structure?
+        1. Informational: Do the questions target the same specific information or facts?
+        2. Stylistic: Do the questions have similar styles in terms of tone, complexity, and structure?
+        3. Contextual: Are both questions equally appropriate for the specific context provided?
+        4. Motivational: Do the questions have the same motivation or underlying purpose?
+        5. Overall: Are the questions overall similar in terms of the dimensions above?
 
-      Given these dimensions of similarity as well as the following information below, please evaluate whether the two questions below are overall similar or not. They are either similar or they aren't. 
+      Please evaluate whether the two questions below are overall similar or not in each of these dimensions.
 
-      Transcript context: {transcript_context}
+      Transcript context: ```{transcript_context}```
 
-      LLM Question: {LLM_question}
-      LLM Question Type Classification: {LLM_question_type}
+      Question #1: ```{LLM_question}```
+      Question #1 Type Classification: ```{LLM_question_type}```
 
-      Human Question: {human_question}
-      Human Question Type Classification: {Actual_question_type}
+      Question #2: ```{human_question}```
+      Question #2 Type Classification: ```{Actual_question_type}```
 
-      These two questions, one from a human and one from an LLM, are two possible continuation questions an interviewer can ask given the current interview so far. Your task is to determine whether the intent of these two possible questions are more similar or not different overall.
+      Please take things step by step. Respond with a python dictionary, where the key is the dimension of similarity and the value contains reasoning and a `yes` or `no`.
 
-      Please take things step by step. The format of your response should be in this sequence:
-        1. First, explain your thought process and reasoning comparing these questions across each dimension of similarity. 
-        2. Next, guess how a human would reason about these two questions given the dimensions of similarity.
-        2. Then, answer the following question: In the context of this interview, are the two questions provided more similar or different? 
-        Please format your final answer as either "similar" or "different" with brackets. 
-          If you think the similarity between the questions are high, please say "similar" instead.
-          If you think the similarity between the questions are low, please say "different" instead.
-      Your final answer can only be either of the following two: [similar] or [different], not both. 
+      Here is an abbreviated example:
+      {{
+        "Informational": "The questions target the following information or facts... these are similar. Thus, I answer `yes`.",
+        "Stylistic": "The questions have similar styles in terms of tone, complexity, and structure because... Thus, I answer `yes`.",
+        "Contextual": "The questions are equally appropriate for the specific context provided because... Thus, I answer `yes`.",
+        "Motivational": "The questions have different motivation because... Thus, I answer `no`.",
+        "Overall": "The questions are overall similar in terms of the dimensions above because... Thus, I answer `yes`."
+      }}
+
+      Now, give me a full response. Only respond with the dictionary in the same format above.
       '''
       return prompt
       

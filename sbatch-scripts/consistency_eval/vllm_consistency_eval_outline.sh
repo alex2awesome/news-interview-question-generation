@@ -11,7 +11,8 @@
 
 cd /project/jonmay_231/spangher/Projects/news-interview-question-generation
 
-source env_setup.sh
+source /home/spangher/.bashrc
+conda activate vllm-retriv-py39
 
 python -m evaluators.vllm_consistency_eval \
     --dataset_path /project/jonmay_1426/spangher/news-interview-question-generation/output_results/outline/QA_Seq_LLM_generated.csv \

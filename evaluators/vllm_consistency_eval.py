@@ -7,7 +7,12 @@ import pandas as pd
 from transformers import AutoTokenizer
 import gc
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from helper_functions import vllm_infer, vllm_infer_batch, load_vllm_model, extract_text_inside_brackets
+from helper_functions import (
+    vllm_infer, 
+    vllm_infer_batch, 
+    load_vllm_model, 
+    extract_text_inside_brackets
+)
 from prompts import get_consistency_eval_prompt
 
 def consistency_eval_prompt_loader(transcript_context, llm_question, human_question, LLM_question_type, Actual_question_type):
@@ -124,12 +129,30 @@ def for_testing_consistency_compare_process_dataset(df, output_dir="output_resul
     return df
 
 if __name__ == "__main__":
-    dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/CoT_outline/LLM_classified_results.csv"
-    df = pd.read_csv(dataset_path)
-    df = df.head(50)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_path", type=str, default=None, help="Path to the dataset that needs to be processed")
+    parser.add_argument("--output_dir", type=str, default=None, help="Path to the output directory")
+    parser.add_argument("--batch_size", type=int, default=50, help="Batch size for processing the dataset")
+    parser.add_argument("--model_name", type=str, default="meta-llama/Meta-Llama-3-70B-Instruct", help="Model name for the LLM")
+    parser.add_argument("--debug", action="store_true", help="Debug mode")
+    args = parser.parse_args()
+
+    if args.dataset_path is None:
+        args.dataset_path = "/project/jonmay_231/spangher/Projects/news-interview-question-generation/output_results/CoT_outline/LLM_classified_results.csv"
+    if args.output_dir is None:
+        args.output_dir = "output_results/test/consistency_eval"
+
+    df = pd.read_csv(args.dataset_path)
+    if args.debug:
+        df = df.head(50)
     print(df)
 
-    new_df = for_testing_consistency_compare_process_dataset(df, output_dir="output_results/test/consistency_eval", model_name="meta-llama/Meta-Llama-3-8B-Instruct") # saves consistency_eval labels in LLM_consistency_eval_results.csv
+    new_df = for_testing_consistency_compare_process_dataset(
+        df, 
+        output_dir=args.output_dir,
+        model_name=args.model_name
+    ) # saves consistency_eval labels in LLM_consistency_eval_results.csv
     print(new_df)
 
     # filtered_df = df[(df["Classified_Similarity"].str.contains("Error", na=False))]

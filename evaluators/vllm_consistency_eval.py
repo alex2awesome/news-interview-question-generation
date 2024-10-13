@@ -134,7 +134,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_path", type=str, default=None, help="Path to the dataset that needs to be processed")
     parser.add_argument("--output_dir", type=str, default=None, help="Path to the output directory")
     parser.add_argument("--batch_size", type=int, default=50, help="Batch size for processing the dataset")
-    parser.add_argument("--model_name", type=str, default="meta-llama/Meta-Llama-3-70B-Instruct", help="Model name for the LLM")
+    parser.add_argument("--model_name", type=str, default="meta-llama/Llama-3.1-70B-Instruct", help="Model name for the LLM")
     parser.add_argument("--debug", action="store_true", help="Debug mode")
     args = parser.parse_args()
 

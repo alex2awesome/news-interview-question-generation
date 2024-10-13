@@ -76,6 +76,7 @@ def load_vllm_model(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
         _model[model_name] = model
     else:
         model = _model[model_name]
+    _ = initialize_tokenizer(model_name) # cache the tokenizer 
     return model
 
 
@@ -89,7 +90,7 @@ def load_model(model_name):
         return load_vllm_model(model_name)
 
 
-def initialize_tokenizer(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
+def initialize_tokenizer(model_name=None):
     global _tokenizer
     if _tokenizer is None:
         _tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -98,7 +99,7 @@ def initialize_tokenizer(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
 
 # for batching
 def vllm_infer_batch(messages_batch, model):
-    tokenizer = initialize_tokenizer(model.model_name)
+    tokenizer = initialize_tokenizer()
     formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
     sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
     outputs = model.generate(formatted_prompts, sampling_params)

@@ -4,7 +4,6 @@ import tiktoken
 import re
 from openai import OpenAI
 from transformers import AutoTokenizer
-from vllm import LLM, SamplingParams
 import json
 import os
 import torch
@@ -57,6 +56,8 @@ def setup_hf_env():
 
 
 def load_vllm_model(model_name="meta-llama/meta-llama-3.1-70b-instruct"):
+    from vllm import LLM
+    
     global _model
     if _model[model_name] is None:
         torch.cuda.empty_cache()
@@ -101,6 +102,7 @@ def initialize_tokenizer(model_name=None):
 
 # for batching
 def vllm_infer_batch(messages_batch, model):
+    from vllm import SamplingParams
     tokenizer = initialize_tokenizer()
     formatted_prompts = [tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True) for messages in messages_batch]
     sampling_params = SamplingParams(temperature=0.1, max_tokens=1024)
@@ -132,6 +134,7 @@ def infer_batch(messages_batch, model, verbose=False):
 
 # for single-use testing only
 def vllm_infer(messages, model_name="meta-llama/meta-llama-3.1-70b-instruct"):
+    from vllm import SamplingParams
     model = load_vllm_model(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)

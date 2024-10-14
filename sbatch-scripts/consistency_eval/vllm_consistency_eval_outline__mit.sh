@@ -19,3 +19,19 @@ python -m evaluators.vllm_consistency_eval \
     --output_dir /pool001/spangher/alex/news-interview-question-generation/output_results/consistency_eval_outline \
     --verbose \
     --eval_type "multidimensional"
+
+
+"""
+Local run:
+
+python -m evaluators.vllm_consistency_eval \
+    --dataset_path output_results/outline/LLM_classified_results.csv \
+    --output_dir output_results/consistency_eval_outline \
+    --model_name "gpt4-o" \
+    --debug \
+    --batch_size 1000 \
+    --verbose \
+    --eval_type "multidimensional"
+
+
+"""

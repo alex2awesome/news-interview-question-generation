@@ -2,6 +2,7 @@
 
 import os
 import sys
+import copy
 import re
 import pandas as pd
 import random
@@ -462,7 +463,8 @@ def conduct_advanced_interviews_batch(
                     **conversation,
                     f'question_{turn + 1}': question,
                     f'persuasion_{turn + 1}': persuasion,
-                    f'info_items_{turn + 1}': info_items,
+                    f'info_items_desc_{turn + 1}': copy.copy(info_items[0]),
+                    f'info_item_num_{turn + 1}': copy.copy(info_items[1]),
                     f'answer_{turn + 1}': answer,
                 }
                 for conversation, question, answer, info_items, persuasion in zip(
@@ -535,6 +537,7 @@ def conduct_advanced_interviews_batch(
         unique_info_item_counts[start_idx: end_idx] = [len(info_set) for info_set in unique_info_items_sets]
         batch_output_df = pd.DataFrame({
             'id': batch_df['id'],
+            'persona': personas,
             'combined_dialogue': batch_df['combined_dialogue'],
             'info_items': batch_df['info_items'],
             'outlines': batch_df['outlines'],

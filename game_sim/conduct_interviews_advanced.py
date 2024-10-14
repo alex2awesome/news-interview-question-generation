@@ -405,7 +405,7 @@ def conduct_advanced_interviews_batch(
             'outlines': batch_df['outlines'],
             'running_conversations': running_conversations_for_caching,
             'final_conversations': current_conversations,
-            'info_items_used_across_turns': info_items_used_across_turns[start_idx:end_idx],
+            # 'info_items_used_across_turns': info_items_used_across_turns[start_idx:end_idx],
             'total_info_items_extracted': unique_info_item_counts[start_idx:end_idx],
             'total_info_item_count': total_info_item_counts[start_idx:end_idx],
         })

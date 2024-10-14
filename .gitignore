@@ -13,7 +13,7 @@
 
 # JSONL files
 *.jsonl
-
+*.gz
 # XML files
 *.xml
 

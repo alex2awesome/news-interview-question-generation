@@ -273,7 +273,7 @@ def conduct_advanced_interviews_batch(
 
             # Store the count in a cache variable for redundancy
             info_items_used_across_turns = [
-                info_items_used + new_info_items
+                info_items_used + [new_info_items]
                 for info_items_used, new_info_items in zip(info_items_used_across_turns, new_info_items_count)
             ]
 

@@ -129,6 +129,167 @@ def infer_batch(messages_batch, model, verbose=False):
     else:
         return vllm_infer_batch(messages_batch, model)
 
+import random
+from scipy.stats import beta
+
+# parameters of the beta distribution 
+PERSONA_DICT = {
+    'anxious': [(3, 7), (4, 6), (5, 5), (7, 3.5), (9, 2)],
+    'avoidant': [(2.5, 6.5), (5, 6.75), (7, 7), (7.25, 4), (7.5, 1.5)],
+    'adversarial': [(1, 9), (2, 8.5), (4, 8), (8, 7.5), (9, 7)],
+    'defensive': [(4, 8), (6, 7), (8.5, 6.5), (8.5, 4.25), (8.5, 2)],
+    'straightforward': [(2, 5.5), (4, 5.5), (5.5, 5.5), (7.75, 4), (10, 2.5)],
+    'poor explainer': [(3.5, 7.5), (5.5, 7.5), (7.5, 7.5), (7.25, 4.35), (7, 1.2)],
+    'dominating': [(2, 6), (4, 6), (6, 6), (7.5, 3.8), (8, 1.6)],
+    'clueless': [(3.6, 8.0), (4.8, 6.5), (5, 5), (6.55, 3.3), (8.1, 1.6)]
+}
+UNIFORM_BETA_PARAMS = (1, 1)
+
+def sample_proportion_from_beta(persona, persuasion_level, game_level="advanced"):
+    """
+    Sample a proportion from the beta distribution based on persona and persuasion level.
+
+    Parameters:
+        - persona (str): The persona of the source (e.g., 'anxious', 'dominant', etc.).
+        - persuasion_level (int): The level of persuasion (1-5).
+
+    Returns:
+        float: A proportion between 0 and 1 sampled from the beta distribution.
+    """
+    if game_level == "basic":
+        return 1 
+    elif game_level == "intermediate":
+        return beta.rvs(UNIFORM_BETA_PARAMS[0], UNIFORM_BETA_PARAMS[1])
+    else:
+        a, b = PERSONA_DICT[persona][persuasion_level - 1]
+        proportion = beta.rvs(a, b)
+        proportion = max(0.0, min(1.0, proportion))
+        return proportion
+
+
+def get_relevant_info_items(
+        info_item_numbers, 
+        info_items_dict, 
+        persona, 
+        persuasion_level, 
+        used_info_items, 
+        game_level="advanced"
+):
+    """
+    Retrieve relevant information items based on the given parameters.
+
+    This function identifies and returns a subset of information items that are relevant to the current 
+    interview context. It considers the persona and persuasion level to determine the proportion of 
+    information items to return. The function also ensures that previously used information items are not 
+    selected again.
+
+    Parameters:
+        - info_item_numbers (list of int): A list of information item numbers that are relevant to a previously asked question.
+        - info_items_dict (dict): A dictionary mapping all information item keys to their content.
+        - persona (str): The persona of the source (e.g., 'anxious', 'dominant', etc.).
+        - persuasion_level (int): The level of persuasion (0, 1, or 2).
+        - used_info_items (set of int): A set of information item numbers that have already been used.
+
+    Returns:
+        tuple: A tuple containing:
+            - str: A formatted string of the selected information items or a message if no items are available.
+            - list of int: A list of numbers representing the selected information items.
+    """
+    # Initialize a list to store available information items
+    available_items = []
+    
+    # Iterate over the provided information item numbers
+    for num in info_item_numbers:
+        # Check if the item has not been used
+        if num not in used_info_items:
+            # Construct the key for the information item
+            key = f"Information Item #{num}"
+            # Retrieve the content of the information item from the dictionary
+            content = info_items_dict.get(key.lower(), '')
+            # If content exists, add it to the available items list
+            if content:
+                available_items.append((num, f"{key}: {content}"))
+    
+    # Calculate the total number of items and the number of used items
+    N = len(info_item_numbers)
+    k = len([num for num in info_item_numbers if num in used_info_items])  # num of used items
+    available = N - k  # Calculate the number of available items
+
+    # Check if all relevant information has been used
+    if available == 0:
+        return "All relevant information has been given to the interviewer already!", []  
+    
+    # Check if there are no available items
+    if not available_items:
+        return "No information items align with the question", []
+    
+    # Sample a proportion of items to return based on persona and persuasion level
+    proportion = sample_proportion_from_beta(persona, persuasion_level, game_level=game_level)
+    num_items_to_retrieve = int(proportion * N)
+    
+    # Adjust the number of items to return if it exceeds available items
+    num_items_to_retrieve = min(num_items_to_retrieve, available)
+
+    # If there are items to return, sample and format them
+    if num_items_to_retrieve > 0:
+        sampled = random.sample(available_items, num_items_to_retrieve)
+        sampled_items_str = "\n".join(item[1] for item in sampled)
+        sampled_item_numbers = [item[0] for item in sampled]
+        return sampled_items_str, sampled_item_numbers
+    
+    # If no items are selected, return a default message
+    else:
+        return "No relevant information for this question. Feel free to ramble and say nothing important.", []
+
+
+def get_all_relevant_info_items(info_item_numbers, info_items_dict):
+    """
+    Retrieve all relevant information items based on provided item numbers.
+
+    This function takes a list of information item numbers and a dictionary containing
+    information items. It constructs a list of all relevant information items that
+    correspond to the provided item numbers.
+
+    Parameters:
+    - info_item_numbers (list of int): A list of numbers representing the information items to retrieve.
+    - info_items_dict (dict): A dictionary where keys are information item identifiers and values are the content.
+
+    Returns:
+    - str: A formatted string containing all relevant information items. If no items align with the question,
+            a default message is returned.
+    """
+    # Initialize a list to store all relevant information items
+    all_items = []
+    
+    # Iterate over the provided information item numbers
+    for num in info_item_numbers:
+        # Construct the key for the information item
+        key = f"information item #{num}".lower()
+        # Retrieve the content of the information item from the dictionary
+        content = info_items_dict.get(key, '')
+        # If content exists, add it to the all items list
+        if content:
+            all_items.append(f"Information Item #{num}: {content}")
+
+    # Check if no relevant information items were found
+    if not all_items:
+        return "No information items align with the question"
+
+    # Return a formatted string of all relevant information items
+    return "\n".join(all_items) if all_items else "No information items align with the question"
+
+
+
+def robust_load(x):
+    try:
+        return json.loads(x)
+    except:
+        try:
+            return ast.literal_eval(x)
+        except:
+            raise ValueError(f"Could not load {x}")
+    
+
 
 # for single-use testing only
 def vllm_infer(messages, model_name="meta-llama/meta-llama-3.1-70b-instruct"):

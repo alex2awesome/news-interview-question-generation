@@ -1,0 +1,13 @@
+
+sbatch advanced/advanced_70B_v_gpt4o.sh
+sbatch advanced/advanced_8B_v_gpt4o.sh
+sbatch advanced/advanced_gpt4o_mini_v_gpt4o.sh
+sbatch advanced/advanced_gpt4o_v_gpt4o.sh
+sbatch basic/basic_70B_v_gpt4o.sh
+sbatch basic/basic_8B_v_gpt4o.sh
+sbatch basic/basic_gpt4o_mini_v_gpt4o.sh
+sbatch basic/basic_gpt4o_v_gpt4o.sh
+sbatch intermediate/intermediate_70B_v_gpt4o.sh
+sbatch intermediate/intermediate_8B_v_gpt4o.sh
+sbatch intermediate/intermediate_gpt4o_mini_v_gpt4o.sh
+sbatch intermediate/intermediate_gpt4o_v_gpt4o.sh

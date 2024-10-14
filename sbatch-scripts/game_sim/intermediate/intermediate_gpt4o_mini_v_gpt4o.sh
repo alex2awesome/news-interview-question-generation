@@ -20,6 +20,6 @@ python -m game_sim.conduct_interviews_advanced \
     --num_turns 8 \
     --interviewer_model_name "gpt-4o-mini" \
     --source_model_name "gpt-4o" \
-    --batch_size 50 \
+    --batch_size 5 \
     --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \
     --game_level "intermediate"

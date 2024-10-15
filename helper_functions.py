@@ -309,18 +309,17 @@ def generate_vllm_response(prompt, role, model, tokenizer):
     return vllm_infer(messages, model, tokenizer)
 
 # setup openai API
-OPENAI_KEY_PATH = os.path.expanduser('~/.openai-api-key.txt')
-if not os.path.exists(OPENAI_KEY_PATH):
-    OPENAI_KEY_PATH = os.path.expanduser('~/.openai-isi-project-key.txt')
-if not os.path.exists(OPENAI_KEY_PATH):
-    raise ValueError("OpenAI API key file not found.")
+if 'OPENAI_API_KEY' not in os.environ:
+    OPENAI_KEY_PATH = os.path.expanduser('~/.openai-api-key.txt')
+    if not os.path.exists(OPENAI_KEY_PATH):
+        OPENAI_KEY_PATH = os.path.expanduser('~/.openai-isi-project-key.txt')
+    if not os.path.exists(OPENAI_KEY_PATH):
+        raise ValueError("OpenAI API key file not found.")
+    os.environ['OPENAI_API_KEY'] = open(OPENAI_KEY_PATH).read().strip()
 
-
-def get_openai_client(key_file_path=OPENAI_KEY_PATH):
+def get_openai_client():
     global _client
     if _client is None:
-        key_path = os.path.expanduser(key_file_path)
-        os.environ['OPENAI_API_KEY'] = open(key_path).read().strip()
         _client = OpenAI()
     return _client
 

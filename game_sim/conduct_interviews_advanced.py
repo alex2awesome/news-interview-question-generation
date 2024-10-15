@@ -71,7 +71,6 @@ def conduct_advanced_interviews_batch(
     unique_info_item_counts = [0] * num_samples
     total_info_item_counts = [0] * num_samples
     info_items_used_across_turns = [[]] * num_samples
-    used_info_items = [set() for _ in range(num_samples)]
     df['info_items_dict'] = df['info_items_dict'].apply(robust_load)
 
     persona_types = [
@@ -84,7 +83,6 @@ def conduct_advanced_interviews_batch(
         "dominating", 
         "clueless"
     ]
-
     for start_idx in range(0, num_samples, batch_size):
         end_idx = min(start_idx + batch_size, num_samples)
         batch_df = df.iloc[start_idx: end_idx]
@@ -92,7 +90,7 @@ def conduct_advanced_interviews_batch(
         outlines = batch_df['outlines']
         current_conversations = [""] * (end_idx - start_idx)
         previous_persuasion_scores_all_rounds = [[]] * (end_idx - start_idx)
-
+        used_info_items = [set() for _ in range(end_idx - start_idx)]
         total_info_item_counts[start_idx:end_idx] = [count_information_items(info_items) for info_items in info_items_list]
         
         # basic just uses the "straightforward" persona

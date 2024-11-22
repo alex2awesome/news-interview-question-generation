@@ -8,7 +8,8 @@ To run the human game simulation, navigate to `game_sim` and run:
     --model_name "gpt-4o" \
     --batch_size 5 \
     --dataset_path "output_results/game_sim/outlines/final_df_with_outlines.csv" \
-    --output_dir "test" --human_eval```
+    --output_dir "test" --human_eval
+```
 
 
 If you enjoyed this work, please cite:
